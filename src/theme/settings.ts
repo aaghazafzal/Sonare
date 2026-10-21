@@ -8,9 +8,13 @@ import {
   type SkinSet,
   type ThemeColors,
 } from './presets';
+import { DEFAULT_CUSTOM_KEYS } from '../lib/keymaps';
 
 export type Texture = 'none' | 'grain' | 'weave' | 'lines';
 export type LabelMode = 'none' | 'c' | 'all' | 'keys';
+export type KeymapMode = 'real' | 'full' | 'classic' | 'custom';
+export type NoteNaming = 'off' | 'cde' | 'solfege';
+export type PlayLayout = 'big' | 'workspace';
 
 export interface Settings {
   presetId: string; // 'custom' once any colour is edited
@@ -32,6 +36,13 @@ export interface Settings {
   guitarFrets: number;
   recordOffsetMs: number;
   inputMonitoring: boolean;
+  keymap: KeymapMode;
+  customKeys: Record<string, number>;
+  playLayout: PlayLayout;
+  bigLabels: NoteNaming;
+  bigKeycaps: boolean;
+  bigVisible: 'focus' | 'max';
+  bigToolbar: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -54,7 +65,14 @@ export const DEFAULT_SETTINGS: Settings = {
   guitarFrets: 15,
   recordOffsetMs: 0,
   inputMonitoring: false,
-};
+  keymap: 'real',
+  customKeys: DEFAULT_CUSTOM_KEYS,
+  playLayout: 'big',
+  bigLabels: 'cde',
+  bigKeycaps: true,
+  bigVisible: 'focus',
+  bigToolbar: false,
+}; 
 
 interface SettingsStore extends Settings {
   update: (p: Partial<Settings>) => void;

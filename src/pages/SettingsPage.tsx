@@ -491,6 +491,30 @@ function AudioSettings() {
           )}
         </SettingRow>
       </Section>
+      <Section title="Computer keyboard">
+        <SettingRow label="Key layout" hint="Real = piano-shaped rows, Full = five octaves with Shift, Classic = two tracker rows. Edit Custom from the Big piano settings.">
+          <Segmented
+            value={st.keymap}
+            onChange={(v) => st.update({ keymap: v })}
+            options={[
+              { value: 'real', label: 'Real' },
+              { value: 'full', label: 'Full' },
+              { value: 'classic', label: 'Classic' },
+              { value: 'custom', label: 'Custom' },
+            ]}
+          />
+        </SettingRow>
+        <SettingRow label="Play page layout" hint="Big piano = full-width keyboard with key hints; Workspace = instrument list and all controls">
+          <Segmented
+            value={st.playLayout}
+            onChange={(v) => st.update({ playLayout: v })}
+            options={[
+              { value: 'big', label: 'Big piano' },
+              { value: 'workspace', label: 'Workspace' },
+            ]}
+          />
+        </SettingRow>
+      </Section>
       <Section title="Recording">
         <SettingRow label="Latency correction" hint="Shift vocal takes earlier (+) or later (−) if they sound out of time">
           <div className="row">
@@ -505,7 +529,8 @@ function AudioSettings() {
         <table className="shortcuts">
           <tbody>
             {[
-              ['Z … /  and  Q … ]', 'Play two octaves of notes'],
+              ['Q … P, Z … /', 'White keys (Real layout); the row above plays the black keys'],
+              ['1 … M + Shift', 'Five octaves (Full layout); Shift plays the black key'],
               ['← →', 'Octave down / up'],
               ['↑ ↓', 'Velocity up / down'],
               ['Space', 'Sustain (Play page) · Play / pause (Studio)'],

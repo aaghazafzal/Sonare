@@ -7,7 +7,7 @@ import { Flute, PanFlute } from './Wind';
 import { Mallets } from './Mallets';
 import { Segmented } from '../ui';
 import { noteOff, noteOn, strike, useLive } from '../../audio/live';
-import { drumKeyLabels, pianoKeyLabels } from '../../audio/input';
+import { drumKeyLabels, mappedRange, pianoKeyLabels } from '../../audio/input';
 import { useSettings, type LabelMode } from '../../theme/settings';
 import { isKitId, VIEW_LABELS, type ViewKind } from '../../lib/instruments';
 import { CHORD_TYPES, GUITAR_CHORDS, isBlack, NOTE_NAMES, SCALES, scaleNotes } from '../../lib/notes';
@@ -15,7 +15,7 @@ import { useMobile, useMobileStore } from '../../lib/useMobile';
 
 const WHITE_COUNT: Record<number, number> = { 49: 29, 61: 36, 76: 45, 88: 52 };
 
-function whitesToSpan(low: number, whites: number) {
+export function whitesToSpan(low: number, whites: number) {
   let m = low;
   let w = 0;
   while (w < whites - 1 || isBlack(m)) {
@@ -126,7 +126,8 @@ export function InstrumentStage({
       setKbLow(next);
     }
   }, [octave, kbRows]);
-  const pianoLabels = useMemo(() => pianoKeyLabels(octave), [octave]);
+  const pianoLabels = useMemo(() => pianoKeyLabels(octave, settings.keymap), [octave, settings.keymap, settings.customKeys]);
+  const mapped = useMemo(() => mappedRange(octave, settings.keymap), [octave, settings.keymap, settings.customKeys]);
   const drumLabels = useMemo(() => drumKeyLabels(), []);
 
   /* fretboard */
@@ -352,7 +353,7 @@ export function InstrumentStage({
                 count={kbTop - rowLow}
                 onChange={setKbLow}
                 active={active}
-                mapped={[48 + octave * 12, 48 + octave * 12 + 31]}
+                mapped={mapped}
               />
             )}
             {kbRows === 2 && kbLow2 < kbHigh2 && (

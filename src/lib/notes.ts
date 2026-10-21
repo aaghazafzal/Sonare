@@ -70,3 +70,44 @@ export const CHORD_TYPES: Record<string, { label: string; intervals: number[] }>
   oct: { label: 'Octaves', intervals: [0, 12] },
   power: { label: 'Power (5th)', intervals: [0, 7, 12] },
 };
+
+export const SOLFEGE = ['Do', 'Do♯', 'Re', 'Re♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
+export const solfegeName = (midi: number, withOctave = true) =>
+  SOLFEGE[pitchClass(midi)] + (withOctave ? octaveOf(midi) : '');
+
+const CHORD_SHAPES: [number[], string][] = [
+  [[0, 4, 7], ''],
+  [[0, 3, 7], 'm'],
+  [[0, 3, 6], 'dim'],
+  [[0, 4, 8], 'aug'],
+  [[0, 2, 7], 'sus2'],
+  [[0, 5, 7], 'sus4'],
+  [[0, 4, 7, 10], '7'],
+  [[0, 4, 7, 11], 'maj7'],
+  [[0, 3, 7, 10], 'm7'],
+  [[0, 3, 6, 10], 'm7♭5'],
+  [[0, 3, 6, 9], 'dim7'],
+  [[0, 4, 7, 9], '6'],
+  [[0, 3, 7, 9], 'm6'],
+  [[0, 2, 4, 7], 'add9'],
+  [[0, 4, 7, 10, 14], '9'],
+  [[0, 7], '5'],
+];
+
+/** Name the chord formed by the held notes, e.g. "Am7" or "C/E"; null when it isn't a known shape. */
+export function detectChord(midis: number[]): string | null {
+  if (midis.length < 2) return null;
+  const sorted = [...midis].sort((a, b) => a - b);
+  const pcs = [...new Set(sorted.map(pitchClass))];
+  for (const root of pcs) {
+    const rel = pcs.map((p) => (p - root + 12) % 12).sort((a, b) => a - b);
+    for (const [shape, suffix] of CHORD_SHAPES) {
+      const norm = [...new Set(shape.map((x) => x % 12))].sort((a, b) => a - b);
+      if (norm.length === rel.length && norm.every((v, i) => v === rel[i])) {
+        const bass = pitchClass(sorted[0]);
+        return NOTE_NAMES[root] + suffix + (bass !== root ? `/${NOTE_NAMES[bass]}` : '');
+      }
+    }
+  }
+  return null;
+}

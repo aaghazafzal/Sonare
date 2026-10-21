@@ -1,4 +1,4 @@
-import { useMemo, useRef, type CSSProperties } from 'react';
+import { useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
 import { isBlack, noteName, pitchClass } from '../../lib/notes';
 import type { KeyboardSkin } from '../../theme/presets';
 import type { LabelMode } from '../../theme/settings';
@@ -30,6 +30,8 @@ export function Keyboard({
   height = 210,
   showCase = true,
   className = '',
+  renderLabel,
+  marked,
 }: {
   low: number;
   high: number;
@@ -42,6 +44,10 @@ export function Keyboard({
   height?: number;
   showCase?: boolean;
   className?: string;
+  /** replaces the built-in labels (used by the big piano for keycaps and note names) */
+  renderLabel?: (midi: number, black: boolean) => ReactNode;
+  /** keys drawn with a selection outline (keybind editor) */
+  marked?: Record<number, true | undefined>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, number>());
@@ -117,20 +123,22 @@ export function Keyboard({
           <div
             key={m}
             data-midi={m}
-            className={`wk ${active[m] ? 'down' : ''} ${pitchClass(m) === 0 ? 'is-c' : ''}`}
+            className={`wk ${active[m] ? 'down' : ''} ${pitchClass(m) === 0 ? 'is-c' : ''} ${marked?.[m] ? 'marked' : ''}`}
             style={{ left: `${i * ww}%`, width: `${ww}%` }}
           >
-            {label(m)}
+            {renderLabel ? renderLabel(m, false) : label(m)}
           </div>
         ))}
         {blacks.map(({ midi, pos }) => (
           <div
             key={midi}
             data-midi={midi}
-            className={`bk ${active[midi] ? 'down' : ''}`}
+            className={`bk ${active[midi] ? 'down' : ''} ${marked?.[midi] ? 'marked' : ''}`}
             style={{ left: `${pos * ww - bw / 2 + BLACK_OFFSET[pitchClass(midi)] * bw}%`, width: `${bw}%` }}
           >
-            {labels === 'keys' && keyLabels?.get(midi) && <span className="k-hint">{keyLabels.get(midi)}</span>}
+            {renderLabel
+              ? renderLabel(midi, true)
+              : labels === 'keys' && keyLabels?.get(midi) && <span className="k-hint">{keyLabels.get(midi)}</span>}
           </div>
         ))}
       </div>

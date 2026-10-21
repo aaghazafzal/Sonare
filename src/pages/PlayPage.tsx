@@ -1,173 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Circle, Keyboard as KbIcon, Loader2, Minus, Plus, Search, Send, SlidersHorizontal, Square, Usb, Play as PlayIcon } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, Keyboard as KbIcon, Loader2, Maximize2, Minus, Plus, SlidersHorizontal, Usb } from 'lucide-react';
 import { InstrumentStage } from '../components/instruments/InstrumentStage';
-import { useLive, onLiveNote, setSustain, liveStrip } from '../audio/live';
+import { InstrumentBrowser, Stepper, TakeRecorder } from '../components/PlayParts';
+import { BigPiano } from '../components/BigPiano';
+import { useLive, setSustain, liveStrip } from '../audio/live';
 import { useLoading, ensureAudio } from '../audio/engine';
 import { enableMidi, useMidi } from '../audio/input';
-import { groupedInstruments, getInstrument, getKit, isKitId, displayName, defaultView, FAMILY_LABELS } from '../lib/instruments';
+import { getInstrument, getKit, isKitId, displayName, defaultView, FAMILY_LABELS } from '../lib/instruments';
 import { Knob, LevelMeter, Range, Sheet } from '../components/ui';
 import { useMobile } from '../lib/useMobile';
-import { useStudio, makeTrack, uid } from '../studio/store';
-import type { MidiClip, Note } from '../studio/types';
-import { liveVoice } from '../audio/live';
-import * as Tone from 'tone';
+import { useSettings } from '../theme/settings';
 
 const RECENT_KEY = 'sonare.recent';
-
-function InstrumentBrowser({ value, onPick, inSheet = false }: { value: string; onPick: (id: string) => void; inSheet?: boolean }) {
-  const [q, setQ] = useState('');
-  const pending = useLoading((s) => s.pending);
-  const groups = useMemo(() => groupedInstruments(), []);
-  const filtered = groups
-    .map((g) => ({ ...g, items: g.items.filter((i) => i.name.toLowerCase().includes(q.toLowerCase())) }))
-    .filter((g) => g.items.length);
-  const activeRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: inSheet ? 'center' : 'nearest' });
-  }, []);
-
-  return (
-    <aside className={`browser ${inSheet ? 'in-sheet' : ''}`}>
-      <div className="browser-search">
-        <Search size={14} />
-        <input
-          className="input"
-          placeholder="Search 112 instruments"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.stopPropagation()}
-          aria-label="Search instruments"
-        />
-      </div>
-      <div className="browser-list">
-        {filtered.map((g) => (
-          <section key={g.family}>
-            <h4 className="eyebrow">{g.label}</h4>
-            {g.items.map((i) => (
-              <button
-                key={i.id}
-                ref={i.id === value ? activeRef : undefined}
-                className={`browser-item ${i.id === value ? 'on' : ''}`}
-                onClick={() => onPick(i.id)}
-              >
-                <span>{i.name}</span>
-                {pending[i.id] ? <Loader2 size={13} className="spin faint" /> : null}
-              </button>
-            ))}
-          </section>
-        ))}
-        {!filtered.length && <div className="empty">No instrument matches “{q}”.</div>}
-      </div>
-    </aside>
-  );
-}
-
-function Stepper({ label, value, min, max, onChange, format }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void; format?: (v: number) => string }) {
-  return (
-    <div className="stepper">
-      <span className="field-label">{label}</span>
-      <div className="stepper-box">
-        <button className="btn sm icon ghost" onClick={() => onChange(Math.max(min, value - 1))} aria-label={`${label} down`}>
-          <Minus />
-        </button>
-        <span className="mono">{format ? format(value) : value}</span>
-        <button className="btn sm icon ghost" onClick={() => onChange(Math.min(max, value + 1))} aria-label={`${label} up`}>
-          <Plus />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** Quick take recorder: capture what you play here and drop it into the studio as a new track. */
-function TakeRecorder({ onSent }: { onSent: () => void }) {
-  const instrumentId = useLive((s) => s.instrumentId);
-  const [rec, setRec] = useState(false);
-  const [notes, setNotes] = useState<{ pitch: number; t: number; dur: number; vel: number }[]>([]);
-  const t0 = useRef(0);
-  const pending = useRef(new Map<number, { t: number; vel: number }>());
-  const [playing, setPlaying] = useState(false);
-
-  useEffect(() => {
-    if (!rec) return;
-    return onLiveNote((e) => {
-      const t = performance.now() / 1000 - t0.current;
-      if (e.type === 'on') pending.current.set(e.midi, { t, vel: e.vel });
-      else {
-        const p = pending.current.get(e.midi);
-        if (!p) return;
-        pending.current.delete(e.midi);
-        setNotes((ns) => [...ns, { pitch: e.midi, t: p.t, dur: Math.max(0.05, t - p.t), vel: p.vel }]);
-      }
-    });
-  }, [rec]);
-
-  const start = () => {
-    setNotes([]);
-    pending.current.clear();
-    t0.current = performance.now() / 1000;
-    setRec(true);
-  };
-  const stopRec = () => setRec(false);
-
-  const playBack = async () => {
-    await ensureAudio();
-    if (!notes.length) return;
-    const first = notes[0].t;
-    const now = Tone.now() + 0.05;
-    notes.forEach((n) => liveVoice.play(n.pitch, n.dur, now + n.t - first, n.vel));
-    setPlaying(true);
-    const len = Math.max(...notes.map((n) => n.t + n.dur)) - first;
-    setTimeout(() => setPlaying(false), len * 1000 + 300);
-  };
-
-  const send = () => {
-    const st = useStudio.getState();
-    const bpm = st.project.bpm;
-    const first = notes[0]?.t ?? 0;
-    const conv: Note[] = notes.map((n) => ({
-      id: uid(),
-      pitch: n.pitch,
-      start: Math.round(((n.t - first) * bpm) / 60 / 0.0625) * 0.0625,
-      dur: Math.max(0.0625, (n.dur * bpm) / 60),
-      vel: n.vel,
-    }));
-    const bpb = st.project.beatsPerBar;
-    const len = Math.max(bpb, Math.ceil(Math.max(...conv.map((n) => n.start + n.dur)) / bpb) * bpb);
-    const kind = isKitId(instrumentId) ? 'drums' : 'instrument';
-    const track = makeTrack(kind, instrumentId, st.project.tracks.length, `${displayName(instrumentId)} take`);
-    const clip: MidiClip = { id: uid(), kind: 'midi', name: 'Take', start: 0, length: len, notes: conv };
-    track.clips = [clip];
-    st.edit((p) => ({ ...p, tracks: [...p.tracks, track] }));
-    st.setUi({ selectedTrackId: track.id, selectedClipId: clip.id, dock: 'editor', dockOpen: true });
-    setNotes([]);
-    onSent();
-  };
-
-  return (
-    <div className="take">
-      <span className="field-label">Take</span>
-      <div className="row">
-        {!rec ? (
-          <button className="btn rec" onClick={start} title="Record what you play">
-            <Circle fill="currentColor" /> Rec
-          </button>
-        ) : (
-          <button className="btn rec on" onClick={stopRec}>
-            <Square /> Stop
-          </button>
-        )}
-        <button className="btn" disabled={!notes.length || rec || playing} onClick={playBack}>
-          <PlayIcon /> Play
-        </button>
-        <button className="btn" disabled={!notes.length || rec} onClick={send} title="Add as a new track in the studio">
-          <Send /> To studio
-        </button>
-        <span className="mono faint take-count">{notes.length ? `${notes.length} notes` : rec ? 'listening…' : ''}</span>
-      </div>
-    </div>
-  );
-}
 
 export function PlayPage({ goStudio }: { goStudio: () => void }) {
   const live = useLive();
@@ -198,6 +42,9 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
 
   const familyLabel = isKitId(live.instrumentId) ? FAMILY_LABELS.drums : FAMILY_LABELS[inst?.family ?? ''] ?? '';
   const mobile = useMobile();
+  const playLayout = useSettings((s) => s.playLayout);
+  const keymap = useSettings((s) => s.keymap);
+  const setSettings = useSettings((s) => s.update);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const isKit = isKitId(live.instrumentId);
@@ -316,6 +163,8 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
       </div>
     );
 
+  if (playLayout === 'big') return <BigPiano onPick={pick} goStudio={goStudio} />;
+
   return (
     <div className="play">
       <InstrumentBrowser value={live.instrumentId} onPick={pick} />
@@ -329,6 +178,9 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
             </h1>
           </div>
           <div className="recent">
+            <button className="btn sm" onClick={() => setSettings({ playLayout: 'big' })} title="Full-width piano with keyboard hints">
+              <Maximize2 /> Big piano
+            </button>
             {recent
               .filter((r) => r !== live.instrumentId)
               .slice(0, 5)
@@ -392,7 +244,23 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
               </span>
             ) : (
               <span>
-                <kbd>Z</kbd>–<kbd>/</kbd> lower octave, <kbd>Q</kbd>–<kbd>]</kbd> upper octave · <kbd>←</kbd>
+                {keymap === 'real' && (
+                  <>
+                    <kbd>Q</kbd>–<kbd>P</kbd> <kbd>Z</kbd>–<kbd>/</kbd> white keys, row above for black ·{' '}
+                  </>
+                )}
+                {keymap === 'full' && (
+                  <>
+                    <kbd>1</kbd>–<kbd>M</kbd> white keys, <kbd>Shift</kbd> for black ·{' '}
+                  </>
+                )}
+                {keymap === 'classic' && (
+                  <>
+                    <kbd>Z</kbd>–<kbd>/</kbd> lower octave, <kbd>Q</kbd>–<kbd>]</kbd> upper octave ·{' '}
+                  </>
+                )}
+                {keymap === 'custom' && <>Your custom keys · </>}
+                <kbd>←</kbd>
                 <kbd>→</kbd> octave · <kbd>↑</kbd>
                 <kbd>↓</kbd> velocity · hold <kbd>Space</kbd> to sustain
               </span>
