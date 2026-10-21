@@ -2,9 +2,19 @@ import * as Tone from 'tone';
 import { Strip, Voice, ensureAudio, master, metronomeClick, setMasterVolume } from '../audio/engine';
 import { onLiveNote, setLiveTarget } from '../audio/live';
 import { useSettings } from '../theme/settings';
-import { useStudio, uid, songEnd, mapTrack } from './store';
+import {
+  useStudio,
+  uid,
+  songEnd,
+  currentPattern,
+  setChannelNotes,
+  newPattern,
+  freeLane,
+  ensureLanes,
+  addChannel,
+} from './store';
 import { getBuffer, loadBuffer, storeBuffer, encodeWav, download } from './buffers';
-import type { AudioClip, MidiClip, Note, Project, Track } from './types';
+import type { AudioItem, Note, Pattern, Project } from './types';
 
 const transport = Tone.getTransport();
 const PPQ = transport.PPQ;
@@ -55,33 +65,51 @@ function syncGraph(p: Project) {
 
 /* ------------------------------------------------------------ scheduling */
 
-function scheduleNotes(t: Track, clip: MidiClip, voice: Voice) {
-  for (const note of clip.notes) {
-    if (note.start >= clip.length || note.start < 0) continue;
-    const dur = Math.min(note.dur, clip.length - note.start);
-    const durTicks = Math.max(1, Math.round(dur * PPQ));
-    transport.schedule((time) => {
-      voice.play(note.pitch, Tone.Ticks(durTicks).toSeconds(), time, note.vel);
-    }, ticks(clip.start + note.start));
+/** Swing pushes every off-beat 16th later by up to a third of a 16th. */
+const swung = (start: number, swing: number) => {
+  const sixteenth = Math.round(start * 4);
+  return Math.abs(start * 4 - sixteenth) < 0.01 && sixteenth % 2 === 1 ? start + swing * (0.25 / 3) : start;
+};
+
+/** Schedule a pattern at `at` for `length` beats, repeating it when the placement is longer. */
+function schedulePattern(pat: Pattern, at: number, length: number) {
+  if (pat.length <= 0) return;
+  for (let rep = 0; rep < length; rep += pat.length) {
+    for (const [channelId, notes] of Object.entries(pat.notes)) {
+      const voice = nodes.get(channelId)?.voice;
+      if (!voice) continue;
+      for (const note of notes) {
+        if (note.start < 0 || note.start >= pat.length) continue;
+        const t = rep + swung(note.start, pat.swing);
+        if (t >= length) continue;
+        const dur = Math.min(note.dur, pat.length - note.start, length - t);
+        const durTicks = Math.max(1, Math.round(dur * PPQ));
+        transport.schedule((time) => {
+          voice.play(note.pitch, Tone.Ticks(durTicks).toSeconds(), time, note.vel);
+        }, ticks(at + t));
+      }
+    }
   }
-  void t;
 }
 
-function scheduleAudio(node: TrackNode, clip: AudioClip, bpm: number) {
-  const buf = getBuffer(clip.bufferId);
+function scheduleAudio(item: AudioItem, bpm: number, used: Set<string>) {
+  const node = nodes.get(item.channelId);
+  if (!node) return;
+  const buf = getBuffer(item.bufferId);
   if (!buf) {
-    void loadBuffer(clip.bufferId).then((b) => b && requestSync());
+    void loadBuffer(item.bufferId).then((b) => b && requestSync());
     return;
   }
-  let player = node.players.get(clip.id);
+  used.add(item.id);
+  let player = node.players.get(item.id);
   if (!player) {
     player = new Tone.Player(buf).connect(node.strip.input);
-    node.players.set(clip.id, player);
+    node.players.set(item.id, player);
   }
-  player.volume.value = Tone.gainToDb(clip.gain);
-  const startSec = (clip.start * 60) / bpm;
-  const durSec = Math.min((clip.length * 60) / bpm, buf.duration - clip.offset);
-  if (durSec > 0) player.sync().start(startSec, clip.offset, durSec);
+  player.volume.value = Tone.gainToDb(item.gain);
+  const startSec = (item.start * 60) / bpm;
+  const durSec = Math.min((item.length * 60) / bpm, buf.duration - item.offset);
+  if (durSec > 0) player.sync().start(startSec, item.offset, durSec);
 }
 
 function reschedule(p: Project) {
@@ -89,30 +117,46 @@ function reschedule(p: Project) {
   transport.cancel(0);
   transport.bpm.value = p.bpm;
   transport.timeSignature = p.beatsPerBar;
-  const end = Math.max(songEnd(p), p.beatsPerBar);
-  transport.loop = p.loop.on;
-  if (p.loop.on && p.loop.end > p.loop.start) {
-    transport.loopStart = ticks(p.loop.start);
-    transport.loopEnd = ticks(p.loop.end);
+  const used = new Set<string>();
+
+  if (p.mode === 'pattern') {
+    // pattern mode: loop the selected pattern on its own
+    const pat = currentPattern(p);
+    transport.loop = true;
+    transport.loopStart = 0;
+    transport.loopEnd = ticks(Math.max(1, pat.length));
+    schedulePattern(pat, 0, pat.length);
+  } else {
+    transport.loop = p.loop.on;
+    if (p.loop.on && p.loop.end > p.loop.start) {
+      transport.loopStart = ticks(p.loop.start);
+      transport.loopEnd = ticks(p.loop.end);
+    }
+    const byId = new Map(p.patterns.map((x) => [x.id, x]));
+    for (const it of p.playlist) {
+      if (p.lanes[it.lane]?.mute) continue;
+      if (it.kind === 'pattern') {
+        const pat = byId.get(it.patternId);
+        if (pat) schedulePattern(pat, it.start, it.length);
+      } else scheduleAudio(it, p.bpm, used);
+    }
+    // stop at the end of the song unless looping or recording past it
+    if (!p.loop.on) {
+      const end = Math.max(songEnd(p), p.beatsPerBar);
+      transport.schedule((time) => {
+        Tone.getDraw().schedule(() => {
+          if (!useStudio.getState().recording) stop();
+        }, time);
+      }, ticks(end + 1));
+    }
   }
 
-  for (const t of p.tracks) {
-    const node = nodes.get(t.id)!;
-    const liveClipIds = new Set<string>();
-    for (const c of t.clips) {
-      if (c.kind === 'midi' && node.voice) scheduleNotes(t, c, node.voice);
-      if (c.kind === 'audio' && t.kind === 'audio') {
-        liveClipIds.add(c.id);
-        scheduleAudio(node, c, p.bpm);
-      }
-    }
-    for (const [id, pl] of node.players) {
-      if (!liveClipIds.has(id)) {
+  for (const node of nodes.values())
+    for (const [id, pl] of node.players)
+      if (!used.has(id)) {
         pl.dispose();
         node.players.delete(id);
       }
-    }
-  }
 
   if (p.metronome) {
     transport.scheduleRepeat(
@@ -123,15 +167,6 @@ function reschedule(p: Project) {
       '4n',
       0,
     );
-  }
-
-  // auto-stop at the end of the song when not looping (and not recording, which can run past it)
-  if (!p.loop.on) {
-    transport.schedule((time) => {
-      Tone.getDraw().schedule(() => {
-        if (!useStudio.getState().recording) stop();
-      }, time);
-    }, ticks(end + 1));
   }
 }
 
@@ -158,14 +193,16 @@ export async function play() {
   if (s.playing) return;
   requestSync();
   await Promise.all([...nodes.values()].map((n) => n.voice?.ready));
-  transport.ticks = Math.round(s.cursor * PPQ);
+  const start = s.project.mode === 'pattern' ? 0 : s.cursor;
+  transport.ticks = Math.round(start * PPQ);
   transport.start('+0.05');
   useStudio.setState({ playing: true });
 }
 
 export function pause() {
   transport.pause();
-  useStudio.setState({ playing: false, cursor: currentBeat() });
+  const s = useStudio.getState();
+  useStudio.setState({ playing: false, cursor: s.project.mode === 'pattern' ? s.cursor : currentBeat() });
   nodes.forEach((n) => n.voice?.releaseAll());
 }
 
@@ -180,12 +217,28 @@ export function stop() {
 export function seek(beats: number) {
   const b = Math.max(0, beats);
   useStudio.setState({ cursor: b });
-  if (useStudio.getState().playing) transport.ticks = Math.round(b * PPQ);
+  if (useStudio.getState().playing && useStudio.getState().project.mode === 'song') transport.ticks = Math.round(b * PPQ);
 }
 
 export function togglePlay() {
   if (useStudio.getState().playing) pause();
   else void play();
+}
+
+/** Switch between looping the current pattern and playing the whole playlist. */
+export function setMode(mode: Project['mode']) {
+  const s = useStudio.getState();
+  if (s.project.mode === mode) return;
+  const wasPlaying = s.playing;
+  if (wasPlaying) stop();
+  s.edit((p) => ({ ...p, mode }), false);
+  if (wasPlaying) void play();
+}
+
+/** Short preview of a note on a channel (step clicks, piano-roll keys). */
+export function audition(channelId: string, pitch: number, vel = 0.8) {
+  void ensureAudio();
+  nodes.get(channelId)?.voice?.play(pitch, 0.3, Tone.immediate(), vel);
 }
 
 /* ------------------------------------------------------------- recording */
@@ -194,8 +247,9 @@ let mic: Tone.UserMedia | null = null;
 let micRecorder: Tone.Recorder | null = null;
 let monitor: Tone.Gain | null = null;
 let recStartBeat = 0;
-let recAudioTrack: string | null = null;
-let recMidiTracks: string[] = [];
+let recAudioChannel: string | null = null;
+let recMidiChannels: string[] = [];
+let recMode: Project['mode'] = 'song';
 const pendingNotes = new Map<number, { start: number; vel: number }>();
 let capturedNotes: Note[] = [];
 let unsubscribeLive: (() => void) | null = null;
@@ -217,33 +271,34 @@ export async function record() {
   await ensureAudio();
   if (useStudio.getState().recording) return;
   if (useStudio.getState().playing) pause();
-  const s = useStudio.getState();
-  let p = s.project;
-  // if nothing is armed, arm the selected track
-  if (!p.tracks.some((t) => t.arm) && s.selectedTrackId) {
-    s.edit((pr) => mapTrack(pr, s.selectedTrackId!, (t) => ({ ...t, arm: true })), false);
-    p = useStudio.getState().project;
+  let s = useStudio.getState();
+  // if nothing is armed, arm the selected channel
+  if (!s.project.tracks.some((t) => t.arm) && s.selectedTrackId) {
+    s.edit((pr) => ({ ...pr, tracks: pr.tracks.map((t) => (t.id === s.selectedTrackId ? { ...t, arm: true } : t)) }), false);
   }
-  const armed = p.tracks.filter((t) => t.arm);
+  s = useStudio.getState();
+  const armed = s.project.tracks.filter((t) => t.arm);
   if (!armed.length) return false;
 
-  recMidiTracks = armed.filter((t) => t.kind !== 'audio').map((t) => t.id);
-  const audioTrack = armed.find((t) => t.kind === 'audio');
-  recAudioTrack = audioTrack?.id ?? null;
+  recMidiChannels = armed.filter((t) => t.kind !== 'audio').map((t) => t.id);
+  recAudioChannel = armed.find((t) => t.kind === 'audio')?.id ?? null;
+  // audio always records onto the playlist
+  if (recAudioChannel && s.project.mode === 'pattern') s.edit((p) => ({ ...p, mode: 'song' }), false);
+  s = useStudio.getState();
+  const p = s.project;
+  recMode = p.mode;
   capturedNotes = [];
   pendingNotes.clear();
 
-  if (recAudioTrack) {
+  if (recAudioChannel) {
     const m = await openMic();
     m.connect(micMeter);
     micRecorder = new Tone.Recorder();
     m.connect(micRecorder);
   }
 
-  const startBeat = s.cursor;
+  const startBeat = recMode === 'pattern' ? 0 : s.cursor;
   recStartBeat = startBeat;
-
-  // count-in: one bar of clicks before the transport starts
   const barSec = (p.beatsPerBar * 60) / p.bpm;
   const lead = p.countIn ? barSec : 0;
   const now = Tone.now() + 0.08;
@@ -260,7 +315,7 @@ export async function record() {
 
   unsubscribeLive?.();
   unsubscribeLive = onLiveNote((e) => {
-    if (!recMidiTracks.length || transport.state !== 'started') return;
+    if (!recMidiChannels.length || transport.state !== 'started') return;
     const beat = transport.getTicksAtTime(Tone.immediate()) / PPQ;
     if (e.type === 'on') pendingNotes.set(e.midi, { start: beat, vel: e.vel });
     else {
@@ -282,32 +337,43 @@ async function finishRecording() {
   const s = useStudio.getState();
   const p = s.project;
 
-  // close notes still held
-  for (const [pitch, st] of pendingNotes) capturedNotes.push({ id: uid(), pitch, start: st.start, dur: Math.max(0.05, endBeat - st.start), vel: st.vel });
+  for (const [pitch, st] of pendingNotes)
+    capturedNotes.push({ id: uid(), pitch, start: st.start, dur: Math.max(0.05, Math.abs(endBeat - st.start)), vel: st.vel });
   pendingNotes.clear();
 
-  if (capturedNotes.length && recMidiTracks.length) {
-    const first = Math.min(...capturedNotes.map((x) => x.start));
-    const last = Math.max(...capturedNotes.map((x) => x.start + x.dur));
-    const bar = p.beatsPerBar;
-    const clipStart = Math.floor(Math.min(first, recStartBeat) / bar) * bar;
-    const clipEnd = Math.max(clipStart + bar, Math.ceil(last / bar) * bar);
-    const notes = capturedNotes.map((x) => ({ ...x, start: x.start - clipStart }));
-    s.edit((pr) => {
-      let next = pr;
-      for (const tid of recMidiTracks) {
-        const clip: MidiClip = { id: uid(), kind: 'midi', name: 'Take', start: clipStart, length: clipEnd - clipStart, notes: notes.map((x) => ({ ...x, id: uid() })) };
-        next = mapTrack(next, tid, (t) => ({ ...t, clips: [...t.clips, clip] }));
-      }
-      return next;
-    });
+  if (capturedNotes.length && recMidiChannels.length) {
+    if (recMode === 'pattern') {
+      // overdub into the looping pattern
+      const pat = currentPattern(p);
+      const notes = capturedNotes.map((n) => {
+        const start = ((n.start % pat.length) + pat.length) % pat.length;
+        return { ...n, start, dur: Math.min(n.dur, pat.length - start) };
+      });
+      s.edit((pr) => recMidiChannels.reduce((acc, ch) => setChannelNotes(acc, pat.id, ch, (old) => [...old, ...notes.map((n) => ({ ...n, id: uid() }))]), pr));
+    } else {
+      const first = Math.min(...capturedNotes.map((x) => x.start));
+      const last = Math.max(...capturedNotes.map((x) => x.start + x.dur));
+      const bar = p.beatsPerBar;
+      const clipStart = Math.floor(Math.min(first, recStartBeat) / bar) * bar;
+      const clipEnd = Math.max(clipStart + bar, Math.ceil(last / bar) * bar);
+      s.edit((pr) => {
+        const [withPat, pat] = newPattern(pr, `Take ${pr.patterns.length + 1}`, clipEnd - clipStart);
+        let next = recMidiChannels.reduce(
+          (acc, ch) => setChannelNotes(acc, pat.id, ch, () => capturedNotes.map((n) => ({ ...n, id: uid(), start: n.start - clipStart }))),
+          withPat,
+        );
+        const lane = freeLane(next, clipStart, clipEnd);
+        next = ensureLanes({ ...next, playlist: [...next.playlist, { id: uid(), kind: 'pattern', patternId: pat.id, lane, start: clipStart, length: clipEnd - clipStart }] }, lane);
+        return next;
+      });
+    }
   }
   capturedNotes = [];
 
-  if (micRecorder && recAudioTrack) {
+  if (micRecorder && recAudioChannel) {
     const r = micRecorder;
     micRecorder = null;
-    const trackId = recAudioTrack;
+    const channelId = recAudioChannel;
     if (r.state === 'started') {
       const blob = await r.stop();
       r.dispose();
@@ -319,17 +385,12 @@ async function finishRecording() {
         const id = await storeBuffer(raw);
         const bpm = useStudio.getState().project.bpm;
         const offset = Math.max(0, Math.min(raw.duration - 0.01, latency));
-        const clip: AudioClip = {
-          id: uid(),
-          kind: 'audio',
-          name: 'Vocal take',
-          start: recStartBeat,
-          length: ((raw.duration - offset) * bpm) / 60,
-          bufferId: id,
-          offset,
-          gain: 1,
-        };
-        useStudio.getState().edit((pr) => mapTrack(pr, trackId, (t) => ({ ...t, clips: [...t.clips, clip] })));
+        const length = ((raw.duration - offset) * bpm) / 60;
+        useStudio.getState().edit((pr) => {
+          const lane = freeLane(pr, recStartBeat, recStartBeat + length);
+          const item: AudioItem = { id: uid(), kind: 'audio', channelId, name: 'Vocal take', lane, start: recStartBeat, length, bufferId: id, offset, gain: 1 };
+          return ensureLanes({ ...pr, playlist: [...pr.playlist, item] }, lane);
+        });
       }
     } else r.dispose();
   }
@@ -337,22 +398,25 @@ async function finishRecording() {
 
 /* ---------------------------------------------------------------- import */
 
-export async function importAudioFile(file: File, trackId: string, atBeat: number) {
+export async function importAudioFile(file: File, opts: { start: number; lane?: number; channelId?: string }) {
   await ensureAudio();
   const raw = await Tone.getContext().rawContext.decodeAudioData(await file.arrayBuffer());
   const id = await storeBuffer(raw);
-  const bpm = useStudio.getState().project.bpm;
-  const clip: AudioClip = {
-    id: uid(),
-    kind: 'audio',
-    name: file.name.replace(/\.[^.]+$/, ''),
-    start: atBeat,
-    length: (raw.duration * bpm) / 60,
-    bufferId: id,
-    offset: 0,
-    gain: 1,
-  };
-  useStudio.getState().edit((p) => mapTrack(p, trackId, (t) => ({ ...t, clips: [...t.clips, clip] })));
+  useStudio.getState().edit((pr) => {
+    let next = pr;
+    let channelId = opts.channelId ?? next.tracks.find((t) => t.kind === 'audio')?.id;
+    if (!channelId) {
+      const [withCh, ch] = addChannel(next, 'audio', '', 'Audio');
+      next = withCh;
+      channelId = ch.id;
+    }
+    const length = (raw.duration * next.bpm) / 60;
+    const lane = opts.lane ?? freeLane(next, opts.start, opts.start + length);
+    const item: AudioItem = {
+      id: uid(), kind: 'audio', channelId, name: file.name.replace(/\.[^.]+$/, ''), lane, start: opts.start, length, bufferId: id, offset: 0, gain: 1,
+    };
+    return ensureLanes({ ...next, playlist: [...next.playlist, item], mode: 'song' }, lane);
+  });
 }
 
 /* ---------------------------------------------------------------- bounce */
@@ -364,9 +428,8 @@ export async function bounce(onProgress: (frac: number) => void): Promise<void> 
   const end = songEnd(p);
   if (end <= 0) return;
   stop();
-  const wasLoop = p.loop.on;
-  const wasMetro = p.metronome;
-  if (wasLoop || wasMetro) s.edit((pr) => ({ ...pr, loop: { ...pr.loop, on: false }, metronome: false }), false);
+  const saved = { loop: p.loop.on, metro: p.metronome, mode: p.mode };
+  s.edit((pr) => ({ ...pr, loop: { ...pr.loop, on: false }, metronome: false, mode: 'song' }), false);
   syncGraph(useStudio.getState().project);
   reschedule(useStudio.getState().project);
   await Promise.all([...nodes.values()].map((n) => n.voice?.ready));
@@ -393,7 +456,7 @@ export async function bounce(onProgress: (frac: number) => void): Promise<void> 
   useStudio.setState({ playing: false });
   const blob = await rec.stop();
   rec.dispose();
-  if (wasLoop || wasMetro) s.edit((pr) => ({ ...pr, loop: { ...pr.loop, on: wasLoop }, metronome: wasMetro }), false);
+  s.edit((pr) => ({ ...pr, loop: { ...pr.loop, on: saved.loop }, metronome: saved.metro, mode: saved.mode }), false);
   const buf = await Tone.getContext().rawContext.decodeAudioData(await blob.arrayBuffer());
   download(encodeWav(buf), `${p.name.replace(/[^\w-]+/g, '_') || 'mix'}.wav`);
 }

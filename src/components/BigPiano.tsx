@@ -18,12 +18,14 @@ import {
   MoveHorizontal,
   ArrowUpDown,
   Piano,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import { Keyboard } from './instruments/Keyboard';
 import { DrumPads } from './instruments/DrumKit';
 import { whitesToSpan } from './instruments/InstrumentStage';
 import { InstrumentBrowser, TakeRecorder } from './PlayParts';
-import { Knob, Range, Segmented } from './ui';
+import { Knob, Range, Segmented, useFullscreen } from './ui';
 import { noteOff, noteOn, setSustain, strike, useLive } from '../audio/live';
 import { useLoading } from '../audio/engine';
 import {
@@ -145,6 +147,7 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
   const [bindMsg, setBindMsg] = useState<string | null>(null);
   const [keysRef, keysBox] = useBox<HTMLDivElement>();
   const topRef = useRef<HTMLDivElement>(null);
+  const fs = useFullscreen();
   const kit = isKitId(live.instrumentId);
   const naming = settings.bigLabels;
 
@@ -334,6 +337,9 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
           <Tile icon={<Timer />} label="Metronome" on={panel === 'metro'} active={metro.on} onClick={() => setPanel(panel === 'metro' ? null : 'metro')} />
           <Tile icon={<Waves />} label="Effects" on={panel === 'fx'} onClick={() => setPanel(panel === 'fx' ? null : 'fx')} />
           <div className="divider-v" />
+          {fs.supported && (
+            <Tile icon={fs.on ? <Minimize /> : <Maximize />} label={fs.on ? 'Exit full' : 'Full screen'} active={fs.on} onClick={fs.toggle} />
+          )}
           <Tile icon={<LayoutDashboard />} label="Workspace" onClick={() => settings.update({ playLayout: 'workspace' })} title="Switch to the full workspace layout" />
         </div>
 

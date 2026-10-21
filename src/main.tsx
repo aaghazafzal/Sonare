@@ -14,6 +14,7 @@ import './styles/base.css';
 import './styles/app.css';
 import './styles/instruments.css';
 import './styles/studio.css';
+import './styles/studio-fl.css';
 import './styles/settings.css';
 import './styles/bigpiano.css';
 import './styles/mobile.css';

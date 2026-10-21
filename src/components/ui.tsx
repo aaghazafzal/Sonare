@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type * as Tone from 'tone';
+import { Maximize, Minimize } from 'lucide-react';
 
 export function Range({
   value,
@@ -290,5 +291,32 @@ export function ColorField({
         }}
       />
     </label>
+  );
+}
+
+/** Whole-app full screen toggle (hidden where the browser doesn't support it, e.g. iPhone Safari). */
+export function useFullscreen() {
+  const [on, setOn] = useState(() => typeof document !== 'undefined' && !!document.fullscreenElement);
+  useEffect(() => {
+    const sync = () => setOn(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+  const supported = typeof document !== 'undefined' && !!document.documentElement.requestFullscreen;
+  const toggle = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen().catch(() => undefined);
+  };
+  return { on, toggle, supported };
+}
+
+export function FullscreenButton({ className = 'btn icon ghost', withLabel = false }: { className?: string; withLabel?: boolean }) {
+  const fs = useFullscreen();
+  if (!fs.supported) return null;
+  return (
+    <button className={className} onClick={fs.toggle} title={fs.on ? 'Exit full screen' : 'Full screen'} aria-label={fs.on ? 'Exit full screen' : 'Full screen'}>
+      {fs.on ? <Minimize /> : <Maximize />}
+      {withLabel && <span>{fs.on ? 'Exit full screen' : 'Full screen'}</span>}
+    </button>
   );
 }

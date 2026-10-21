@@ -346,3 +346,6 @@
 .play-foot kbd {
   margin: 0 1px;
 }
+.rail-fs {
+  color: var(--text-muted);
+}

@@ -4,8 +4,8 @@ import * as Tone from 'tone';
 import { useLive, onLiveNote, liveVoice } from '../audio/live';
 import { useLoading, ensureAudio } from '../audio/engine';
 import { groupedInstruments, isKitId, displayName } from '../lib/instruments';
-import { useStudio, makeTrack, uid } from '../studio/store';
-import type { MidiClip, Note } from '../studio/types';
+import { useStudio, uid, addChannel, newPattern, setChannelNotes, freeLane, ensureLanes } from '../studio/store';
+import type { Note, PatternItem } from '../studio/types';
 
 export function InstrumentBrowser({ value, onPick, inSheet = false }: { value: string; onPick: (id: string) => void; inSheet?: boolean }) {
   const [q, setQ] = useState('');
@@ -127,12 +127,21 @@ export function TakeRecorder({ onSent }: { onSent: () => void }) {
     }));
     const bpb = st.project.beatsPerBar;
     const len = Math.max(bpb, Math.ceil(Math.max(...conv.map((n) => n.start + n.dur)) / bpb) * bpb);
-    const kind = isKitId(instrumentId) ? 'drums' : 'instrument';
-    const track = makeTrack(kind, instrumentId, st.project.tracks.length, `${displayName(instrumentId)} take`);
-    const clip: MidiClip = { id: uid(), kind: 'midi', name: 'Take', start: 0, length: len, notes: conv };
-    track.clips = [clip];
-    st.edit((p) => ({ ...p, tracks: [...p.tracks, track] }));
-    st.setUi({ selectedTrackId: track.id, selectedClipId: clip.id, dock: 'editor', dockOpen: true });
+    let channelId = '';
+    let itemId = '';
+    st.edit((p) => {
+      // new channel + a pattern holding the take, placed on the first free playlist track
+      const [withCh, ch] = addChannel(p, isKitId(instrumentId) ? 'drums' : 'instrument', instrumentId, `${displayName(instrumentId)} take`);
+      const [withPat, pat] = newPattern(withCh, `${displayName(instrumentId)} take`, len);
+      const filled = setChannelNotes(withPat, pat.id, ch.id, () => conv);
+      const start = Math.floor(st.cursor / bpb) * bpb;
+      const lane = freeLane(filled, start, start + len);
+      const item: PatternItem = { id: uid(), kind: 'pattern', patternId: pat.id, lane, start, length: len };
+      channelId = ch.id;
+      itemId = item.id;
+      return ensureLanes({ ...filled, playlist: [...filled.playlist, item], mode: 'song' }, lane);
+    });
+    st.setUi({ selectedTrackId: channelId, selectedItemId: itemId, dock: 'roll', dockOpen: true });
     setNotes([]);
     onSent();
   };

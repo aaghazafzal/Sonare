@@ -7,7 +7,7 @@ import { useLive, setSustain, liveStrip } from '../audio/live';
 import { useLoading, ensureAudio } from '../audio/engine';
 import { enableMidi, useMidi } from '../audio/input';
 import { getInstrument, getKit, isKitId, displayName, defaultView, FAMILY_LABELS } from '../lib/instruments';
-import { Knob, LevelMeter, Range, Sheet } from '../components/ui';
+import { FullscreenButton, Knob, LevelMeter, Range, Sheet } from '../components/ui';
 import { useMobile } from '../lib/useMobile';
 import { useSettings } from '../theme/settings';
 
@@ -148,6 +148,7 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
                 goStudio();
               }}
             />
+            <FullscreenButton className="btn" withLabel />
             {midi.supported && !midi.enabled && (
               <button className="btn" onClick={() => void enableMidi()}>
                 <Usb /> Connect MIDI keyboard

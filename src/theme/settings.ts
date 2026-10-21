@@ -43,6 +43,7 @@ export interface Settings {
   bigKeycaps: boolean;
   bigVisible: 'focus' | 'max';
   bigToolbar: boolean;
+  uiSounds: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -72,6 +73,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bigKeycaps: true,
   bigVisible: 'focus',
   bigToolbar: false,
+  uiSounds: true,
 }; 
 
 interface SettingsStore extends Settings {

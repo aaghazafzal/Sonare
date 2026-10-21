@@ -491,6 +491,11 @@ function AudioSettings() {
           )}
         </SettingRow>
       </Section>
+      <Section title="Interface">
+        <SettingRow label="Click sounds" hint="A soft click when you press buttons and tabs (never recorded)">
+          <Toggle on={st.uiSounds} onChange={(v) => st.update({ uiSounds: v })} />
+        </SettingRow>
+      </Section>
       <Section title="Computer keyboard">
         <SettingRow label="Key layout" hint="Real = piano-shaped rows, Full = five octaves with Shift, Classic = two tracker rows. Edit Custom from the Big piano settings.">
           <Segmented

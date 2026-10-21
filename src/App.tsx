@@ -6,7 +6,8 @@ import { SettingsPage } from './pages/SettingsPage';
 import { applySettings, useSettings } from './theme/settings';
 import { installKeyboardInput } from './audio/input';
 import { ensureAudio, master, useLoading } from './audio/engine';
-import { LevelMeter } from './components/ui';
+import { FullscreenButton, LevelMeter } from './components/ui';
+import { installUiSounds } from './audio/uiSounds';
 import { useStudio } from './studio/store';
 import * as Tone from 'tone';
 
@@ -64,6 +65,7 @@ export default function App() {
 
   useEffect(() => applySettings(settings), [settings]);
   useEffect(() => installKeyboardInput(), []);
+  useEffect(() => installUiSounds(), []);
   useEffect(() => {
     const on = () => setRoute(routeFromHash());
     window.addEventListener('hashchange', on);
@@ -93,6 +95,7 @@ export default function App() {
         </div>
         <div className="spacer" />
         <div className="rail-foot">
+          <FullscreenButton className="btn icon ghost rail-fs" />
           {pending > 0 && <span className="rail-loading" title="Loading samples" />}
           <LevelMeter meter={master.meter} className="rail-meter" />
           <span className="rail-db mono" title="Master level">

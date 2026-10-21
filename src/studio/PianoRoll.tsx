@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Eraser, Magnet, MousePointerClick, Wand2, ZoomIn } from 'lucide-react';
-import { useStudio, mapClip, findClip, uid } from './store';
-import { currentBeat } from './playback';
-import { trackNode } from './playback';
-import type { AudioClip, MidiClip, Note, Track } from './types';
+import { useStudio, mapPattern, mapItem, setChannelNotes, uid, currentPattern } from './store';
+import { audition, currentBeat } from './playback';
+import type { AudioItem, Note, Pattern, Track } from './types';
 import { DRUM_PIECES } from '../lib/instruments';
 import { isBlack, noteName, pitchClass } from '../lib/notes';
 import { Range } from '../components/ui';
-import * as Tone from 'tone';
-import { ensureAudio } from '../audio/engine';
 
 const VEL_H = 64;
 const SNAPS = [
@@ -20,59 +17,50 @@ const SNAPS = [
   { v: 0, label: 'Off' },
 ];
 
-function audition(track: Track, pitch: number) {
-  void ensureAudio();
-  const v = trackNode(track.id)?.voice;
-  v?.play(pitch, 0.35, Tone.immediate(), 0.75);
-}
-
-export function ClipEditor() {
+/** Dock panel: the piano roll for the current pattern and selected channel (or the selected audio clip). */
+export function PianoRollPanel() {
   const s = useStudio();
-  const found = findClip(s.project, s.selectedClipId);
-  if (!found) {
-    const t = s.project.tracks.find((x) => x.id === s.selectedTrackId);
+  const p = s.project;
+  const item = p.playlist.find((x) => x.id === s.selectedItemId);
+  if (item?.kind === 'audio') return <AudioItemPanel item={item} />;
+  const pattern = currentPattern(p);
+  const channels = p.tracks.filter((t) => t.kind !== 'audio');
+  const track = channels.find((t) => t.id === s.selectedTrackId) ?? channels[0];
+  if (!track || !pattern)
     return (
       <div className="empty editor-empty">
         <MousePointerClick size={22} />
-        <div>Select a clip to edit it here.</div>
-        <div className="faint">
-          {t && t.kind !== 'audio' ? 'Double-click an empty spot on a track lane to create one.' : 'Pick a clip on any lane.'}
-        </div>
+        <div>Add an instrument channel to start writing notes.</div>
       </div>
     );
-  }
-  if (found.clip.kind === 'audio') return <AudioClipEditor track={found.track} clip={found.clip} />;
-  return <PianoRoll key={found.clip.id} track={found.track} clip={found.clip} />;
+  return <PianoRoll key={pattern.id + track.id} track={track} pattern={pattern} channels={channels} />;
 }
 
-function AudioClipEditor({ track, clip }: { track: Track; clip: AudioClip }) {
+function AudioItemPanel({ item }: { item: AudioItem }) {
   const s = useStudio();
-  const sec = (clip.length * 60) / s.project.bpm;
+  const ch = s.project.tracks.find((t) => t.id === item.channelId);
+  const sec = (item.length * 60) / s.project.bpm;
   return (
     <div className="audio-editor">
       <div className="pr-toolbar">
-        <span className="tag" style={{ borderColor: track.color, color: track.color }}>
-          {track.name}
-        </span>
-        <b>{clip.name}</b>
+        {ch && (
+          <span className="tag" style={{ borderColor: ch.color, color: ch.color }}>
+            {ch.name}
+          </span>
+        )}
+        <b>{item.name}</b>
         <span className="faint mono">
-          {sec.toFixed(2)}s · starts at {clip.offset.toFixed(2)}s of source
+          {sec.toFixed(2)}s · starts {item.offset.toFixed(2)}s into the recording
         </span>
         <div className="spacer" />
         <span className="field-label">Clip gain</span>
         <div style={{ width: 160 }}>
-          <Range
-            value={clip.gain}
-            min={0}
-            max={2}
-            step={0.01}
-            onChange={(g) => s.edit((p) => mapClip(p, clip.id, (c) => ({ ...c, gain: g })), false)}
-          />
+          <Range value={item.gain} min={0} max={2} step={0.01} onChange={(g) => s.edit((p) => mapItem(p, item.id, (c) => ({ ...c, gain: g })), false)} />
         </div>
-        <span className="mono faint">{(20 * Math.log10(Math.max(0.0001, clip.gain))).toFixed(1)} dB</span>
+        <span className="mono faint">{(20 * Math.log10(Math.max(0.0001, item.gain))).toFixed(1)} dB</span>
       </div>
       <div className="empty faint">
-        Drag the clip edges on the timeline to trim, Alt-drag to copy, right-click to split. Track effects (EQ, compressor, reverb, delay) are in the Mixer tab.
+        Drag the clip edges on the playlist to trim · Alt-drag to copy · right-click to delete. Effects for this channel are in the Mixer.
       </div>
     </div>
   );
@@ -88,10 +76,12 @@ type NoteDrag = {
   lastPitch?: number;
 };
 
-function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
+function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Pattern; channels: Track[] }) {
   const s = useStudio();
+  const notes = pattern.notes[track.id] ?? [];
+  const len = pattern.length;
   const drums = track.kind === 'drums';
-  const [ppb, setPpb] = useState(() => (clip.length <= 4 ? 120 : clip.length <= 8 ? 72 : 44));
+  const [ppb, setPpb] = useState(() => (len <= 4 ? 120 : len <= 8 ? 72 : 44));
   const [snap, setSnap] = useState(0.25);
   const [noteLen, setNoteLen] = useState(drums ? 0.25 : 1);
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -110,7 +100,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
   }, [drums]);
   const ROW_H = drums ? 26 : 14;
   const KEYW = drums ? 104 : 64;
-  const W = clip.length * ppb;
+  const W = len * ppb;
   const H = rows.length * ROW_H;
   const rowOf = (pitch: number) => rows.indexOf(pitch);
 
@@ -118,29 +108,38 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
   useEffect(() => {
     const el = mainRef.current;
     if (!el || drums) return;
-    const pitches = clip.notes.map((n) => n.pitch);
+    const pitches = notes.map((n) => n.pitch);
     const mid = pitches.length ? (Math.min(...pitches) + Math.max(...pitches)) / 2 : 62;
     el.scrollTop = rowOf(Math.round(mid)) * ROW_H - el.clientHeight / 2;
   }, []);
 
-  // clip-relative playhead
+  // pattern-relative playhead: the looping pattern, or wherever this pattern sits on the playlist
   useEffect(() => {
     let raf = 0;
     const tick = () => {
       const st = useStudio.getState();
-      const b = (st.playing ? currentBeat() : st.cursor) - clip.start;
+      const pr = st.project;
+      let b = -1;
+      if (st.playing) {
+        const now = currentBeat();
+        if (pr.mode === 'pattern') b = pr.currentPatternId === pattern.id ? now : -1;
+        else {
+          const it = pr.playlist.find((x) => x.kind === 'pattern' && x.patternId === pattern.id && now >= x.start && now < x.start + x.length);
+          if (it) b = (now - it.start) % len;
+        }
+      }
       if (playRef.current) {
-        playRef.current.style.display = b >= 0 && b <= clip.length ? 'block' : 'none';
+        playRef.current.style.display = b >= 0 && b <= len ? 'block' : 'none';
         playRef.current.style.transform = `translateX(${b * ppb}px)`;
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [clip.start, clip.length, ppb]);
+  }, [pattern.id, len, ppb]);
 
   const setNotes = (fn: (notes: Note[]) => Note[], record = true) =>
-    s.edit((p) => mapClip(p, clip.id, (c) => (c.kind === 'midi' ? { ...c, notes: fn(c.notes) } : c)), record);
+    s.edit((p) => setChannelNotes(p, pattern.id, track.id, fn), record);
   const select = (ids: string[]) => s.setUi({ selectedNotes: ids });
 
   const posAt = (clientX: number, clientY: number) => {
@@ -163,31 +162,31 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
     if (drums) {
       const step = snapB(beat);
       const pitch = rows[row];
-      const existing = clip.notes.find((n) => n.pitch === pitch && Math.abs(n.start - step) < 1e-3);
+      const existing = notes.find((n) => n.pitch === pitch && Math.abs(n.start - step) < 1e-3);
       s.checkpoint();
       if (existing) {
         setNotes((ns) => ns.filter((n) => n.id !== existing.id), false);
         drag.current = { mode: 'erase', x0: e.clientX, y0: e.clientY, orig: [], moved: false };
       } else {
-        if (step >= clip.length) return;
+        if (step >= len) return;
         setNotes((ns) => [...ns, { id: uid(), pitch, start: step, dur: snap || 0.25, vel: 0.85 }], false);
-        audition(track, pitch);
+        audition(track.id, pitch);
         drag.current = { mode: 'paint', x0: e.clientX, y0: e.clientY, orig: [], moved: false };
       }
       return;
     }
 
     if (noteId) {
-      const note = clip.notes.find((n) => n.id === noteId)!;
+      const note = notes.find((n) => n.id === noteId)!;
       const rect = target!.getBoundingClientRect();
       const resize = e.clientX > rect.right - 7;
       let ids = s.selectedNotes;
       if (e.shiftKey) ids = sel.has(noteId) ? ids.filter((i) => i !== noteId) : [...ids, noteId];
       else if (!sel.has(noteId)) ids = [noteId];
       select(ids);
-      const orig = clip.notes.filter((n) => ids.includes(n.id));
+      const orig = notes.filter((n) => ids.includes(n.id));
       drag.current = { mode: resize ? 'resize' : 'move', x0: e.clientX, y0: e.clientY, orig, anchorId: noteId, moved: false, lastPitch: note.pitch };
-      if (!resize) audition(track, note.pitch);
+      if (!resize) audition(track.id, note.pitch);
       return;
     }
 
@@ -199,12 +198,12 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
 
     // create a note and keep dragging it
     const start = snapB(beat);
-    if (start >= clip.length) return;
-    const n: Note = { id: uid(), pitch: rows[row], start, dur: Math.min(noteLen, clip.length - start), vel: 0.8 };
+    if (start >= len) return;
+    const n: Note = { id: uid(), pitch: rows[row], start, dur: Math.min(noteLen, len - start), vel: 0.8 };
     s.checkpoint();
     setNotes((ns) => [...ns, n], false);
     select([n.id]);
-    audition(track, n.pitch);
+    audition(track.id, n.pitch);
     drag.current = { mode: 'move', x0: e.clientX, y0: e.clientY, orig: [n], anchorId: n.id, moved: true, lastPitch: n.pitch };
   };
 
@@ -215,11 +214,9 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
       const { beat, row } = posAt(e.clientX, e.clientY);
       const step = snapB(beat);
       const pitch = rows[row];
-      if (step < 0 || step >= clip.length) return;
-      const cur = useStudio.getState().project;
-      const c = findClip(cur, clip.id)?.clip as MidiClip | undefined;
-      if (!c) return;
-      const existing = c.notes.find((n) => n.pitch === pitch && Math.abs(n.start - step) < 1e-3);
+      if (step < 0 || step >= len) return;
+      const cur = useStudio.getState().project.patterns.find((x) => x.id === pattern.id)?.notes[track.id] ?? [];
+      const existing = cur.find((n) => n.pitch === pitch && Math.abs(n.start - step) < 1e-3);
       if (d.mode === 'paint' && !existing) setNotes((ns) => [...ns, { id: uid(), pitch, start: step, dur: snap || 0.25, vel: 0.85 }], false);
       if (d.mode === 'erase' && existing) setNotes((ns) => ns.filter((n) => n.id !== existing.id), false);
       return;
@@ -253,7 +250,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
       const newAnchorPitch = rows[Math.max(0, Math.min(rows.length - 1, rowOf(anchor.pitch) + dRows))];
       if (newAnchorPitch !== d.lastPitch) {
         d.lastPitch = newAnchorPitch;
-        audition(track, newAnchorPitch);
+        audition(track.id, newAnchorPitch);
       }
       setNotes(
         (ns) =>
@@ -261,7 +258,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
             const o = map.get(n.id);
             if (!o) return n;
             const r = Math.max(0, Math.min(rows.length - 1, rowOf(o.pitch) + dRows));
-            return { ...n, start: Math.max(0, Math.min(clip.length - 0.0625, o.start + shift)), pitch: rows[r] };
+            return { ...n, start: Math.max(0, Math.min(len - 0.0625, o.start + shift)), pitch: rows[r] };
           }),
         false,
       );
@@ -277,7 +274,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
       const r0 = Math.floor(marquee.y / ROW_H);
       const r1 = Math.floor((marquee.y + marquee.h) / ROW_H);
       select(
-        clip.notes
+        notes
           .filter((n) => {
             const r = rowOf(n.pitch);
             return n.start < b1 && n.start + n.dur > b0 && r >= r0 && r <= r1;
@@ -292,7 +289,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
     const ids = s.selectedNotes;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === 'a') {
-      select(clip.notes.map((n) => n.id));
+      select(notes.map((n) => n.id));
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && ids.length) {
       setNotes((ns) => ns.filter((n) => !ids.includes(n.id)));
       select([]);
@@ -303,9 +300,9 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
       const d = (e.key === 'ArrowRight' ? 1 : -1) * (snap || 0.25);
       setNotes((ns) => ns.map((n) => (ids.includes(n.id) ? { ...n, start: Math.max(0, n.start + d) } : n)));
     } else if (mod && e.key.toLowerCase() === 'd' && ids.length) {
-      const chosen = clip.notes.filter((n) => ids.includes(n.id));
+      const chosen = notes.filter((n) => ids.includes(n.id));
       const span = Math.max(...chosen.map((n) => n.start + n.dur)) - Math.min(...chosen.map((n) => n.start));
-      const copies = chosen.map((n) => ({ ...n, id: uid(), start: n.start + span })).filter((n) => n.start < clip.length);
+      const copies = chosen.map((n) => ({ ...n, id: uid(), start: n.start + span })).filter((n) => n.start < len);
       setNotes((ns) => [...ns, ...copies]);
       select(copies.map((n) => n.id));
     } else return;
@@ -344,16 +341,42 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
   return (
     <div className="pr">
       <div className="pr-toolbar">
-        <span className="tag" style={{ borderColor: track.color, color: track.color }}>
-          {track.name}
-        </span>
+        <span className="pr-swatch" style={{ background: pattern.color }} />
         <input
           className="input pr-name"
-          value={clip.name}
+          value={pattern.name}
           onKeyDown={(e) => e.stopPropagation()}
-          onChange={(e) => s.edit((p) => mapClip(p, clip.id, (c) => ({ ...c, name: e.target.value })), false)}
-          aria-label="Clip name"
+          onChange={(e) => s.edit((p) => mapPattern(p, pattern.id, (x) => ({ ...x, name: e.target.value })), false)}
+          aria-label="Pattern name"
+          data-hint="Pattern name — the piano roll edits this pattern"
         />
+        <select
+          className="select"
+          value={track.id}
+          onChange={(e) => s.setUi({ selectedTrackId: e.target.value, selectedNotes: [] })}
+          aria-label="Channel"
+          data-hint="Which channel's notes you are editing in this pattern"
+          style={{ borderColor: track.color }}
+        >
+          {channels.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="select"
+          value={len}
+          onChange={(e) => s.edit((p) => mapPattern(p, pattern.id, (x) => ({ ...x, length: Number(e.target.value) })))}
+          aria-label="Pattern length"
+          data-hint="Pattern length in bars"
+        >
+          {[1, 2, 4, 8, 16].map((b) => (
+            <option key={b} value={b * s.project.beatsPerBar}>
+              {b} bar{b > 1 ? 's' : ''}
+            </option>
+          ))}
+        </select>
         <Magnet size={14} className="faint" />
         <select className="select" value={snap} onChange={(e) => setSnap(Number(e.target.value))} aria-label="Grid">
           {SNAPS.map((o) => (
@@ -377,7 +400,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
         <button
           className="btn sm"
           onClick={() => {
-            if (confirm('Remove all notes from this clip?')) setNotes(() => []);
+            if (confirm(`Remove all ${track.name} notes from ${pattern.name}?`)) setNotes(() => []);
           }}
         >
           <Eraser /> Clear
@@ -408,7 +431,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
                 key={m}
                 className={`pr-key ${drums ? 'drum' : isBlack(m) ? 'black' : 'white'} ${pitchClass(m) === 0 ? 'c' : ''}`}
                 style={{ height: ROW_H }}
-                onPointerDown={() => audition(track, m)}
+                onPointerDown={() => audition(track.id, m)}
               >
                 {drums ? DRUM_PIECES.find((p) => p.midi === m)?.label : pitchClass(m) === 0 ? noteName(m) : ''}
               </div>
@@ -439,7 +462,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
               rows.map((m, i) =>
                 isBlack(m) ? <div key={m} className="pr-rowbg" style={{ top: i * ROW_H, height: ROW_H }} /> : null,
               )}
-            {clip.notes.map((n) => {
+            {notes.map((n) => {
               const r = rowOf(n.pitch);
               if (r < 0) return null;
               return (
@@ -480,7 +503,7 @@ function PianoRoll({ track, clip }: { track: Track; clip: MidiClip }) {
           onPointerMove={(e) => velDrag.current && setVelAt(e.clientX, e.clientY)}
           onPointerUp={() => (velDrag.current = false)}
         >
-          {clip.notes.map((n) => (
+          {notes.map((n) => (
             <i
               key={n.id}
               className={sel.has(n.id) ? 'sel' : ''}
