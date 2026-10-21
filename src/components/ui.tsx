@@ -220,6 +220,44 @@ export function LevelMeter({
   );
 }
 
+/** Bottom sheet for phones: slides over the page, closes on backdrop tap or Escape. */
+export function Sheet({
+  open,
+  onClose,
+  title,
+  children,
+  tall = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: ReactNode;
+  children: ReactNode;
+  tall?: boolean;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div className="sheet-root" role="dialog" aria-modal="true">
+      <div className="sheet-backdrop" onClick={onClose} />
+      <div className={`sheet ${tall ? 'tall' : ''}`}>
+        <div className="sheet-grip" />
+        <div className="sheet-head">
+          <h3>{title}</h3>
+          <button className="btn ghost icon" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <div className="sheet-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function ColorField({
   value,
   onChange,

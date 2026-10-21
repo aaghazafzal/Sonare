@@ -11,10 +11,14 @@ import { InstrumentStage } from '../components/instruments/InstrumentStage';
 import { defaultView, displayName, type ViewKind } from '../lib/instruments';
 import { Segmented } from '../components/ui';
 import type { DockTab } from '../studio/store';
+import { InstrumentSelect } from '../studio/Arrangement';
+import { useMobile, useMobileStore } from '../lib/useMobile';
+import { isKitId } from '../lib/instruments';
 
 export function StudioPage() {
   const s = useStudio();
-  const [dockH, setDockH] = useState(() => Math.round(window.innerHeight * 0.4));
+  const mobile = useMobile();
+  const [dockH, setDockH] = useState(() => Math.round(window.innerHeight * (useMobileStore.getState().mode ? 0.5 : 0.4)));
   const resize = useRef<{ y: number; h: number } | null>(null);
 
   useEffect(() => {
@@ -76,6 +80,8 @@ export function StudioPage() {
   const track = s.project.tracks.find((t) => t.id === s.selectedTrackId);
   const [views, setViews] = useState<Record<string, ViewKind>>({});
   const view = track ? views[track.id] ?? defaultView(track.instrumentId) : 'keyboard';
+  // phones: the narrow track header has no instrument menu, so the Play tab carries it
+  const showDockInstrument = !!mobile && s.dock === 'instrument' && !!track && track.kind !== 'audio';
 
   return (
     <div className="studio">
@@ -97,16 +103,31 @@ export function StudioPage() {
           }}
           onPointerUp={() => (resize.current = null)}
         />
-        <div className="dock-bar">
+        <div className={`dock-bar ${showDockInstrument ? 'has-picker' : ''}`}>
           <Segmented<DockTab>
             value={s.dock}
             onChange={(d) => s.setUi({ dock: d, dockOpen: true })}
             options={[
-              { value: 'editor', label: <><SquarePen /> Editor</> },
-              { value: 'mixer', label: <><SlidersHorizontal /> Mixer</> },
-              { value: 'instrument', label: <><Piano /> Play</> },
+              { value: 'editor', title: 'Editor', label: <><SquarePen /> Editor</> },
+              { value: 'mixer', title: 'Mixer', label: <><SlidersHorizontal /> Mixer</> },
+              { value: 'instrument', title: 'Play', label: <><Piano /> Play</> },
             ]}
           />
+          {showDockInstrument && track && (
+            <InstrumentSelect
+              value={track.instrumentId}
+              onChange={(id) =>
+                s.edit((p) =>
+                  mapTrack(p, track.id, (tr) => ({
+                    ...tr,
+                    instrumentId: id,
+                    kind: isKitId(id) ? 'drums' : 'instrument',
+                    name: tr.name === displayName(tr.instrumentId) ? displayName(id) : tr.name,
+                  })),
+                )
+              }
+            />
+          )}
           <span className="faint dock-hint">
             {s.dock === 'instrument' && track
               ? track.kind === 'audio'

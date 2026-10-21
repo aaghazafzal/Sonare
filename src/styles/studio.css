@@ -707,16 +707,6 @@ select.lcd-input {
   font-size: 0.7rem;
   text-align: center;
 }
-
-@media (max-width: 900px) {
-  .transport {
-    gap: 8px;
-  }
-  .tp-name {
-    display: none;
-  }
-}
-
 @media (max-width: 1420px) {
   .tp-name {
     display: none;

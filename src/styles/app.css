@@ -346,39 +346,3 @@
 .play-foot kbd {
   margin: 0 1px;
 }
-
-@media (max-width: 900px) {
-  .app {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto;
-  }
-  .rail {
-    grid-row: 2;
-    flex-direction: row;
-    padding: 6px 12px;
-    border-right: 0;
-    border-top: 1px solid var(--border);
-  }
-  .rail-nav {
-    flex-direction: row;
-  }
-  .rail-item.on::before {
-    display: none;
-  }
-  .wordmark span,
-  .rail-foot {
-    display: none;
-  }
-  .play {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-  .browser {
-    max-height: 30vh;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .play-main {
-    padding: 14px 16px;
-  }
-}

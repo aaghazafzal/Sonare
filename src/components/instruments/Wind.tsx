@@ -32,6 +32,7 @@ interface Props {
   onDown: (midi: number) => void;
   onUp: (midi: number) => void;
   keyLabels?: Map<number, string>;
+  compact?: boolean; // phones: a large fingering strip instead of the full-length flute
 }
 
 function NoteButtons({ notes, active, onDown, onUp, keyLabels }: Omit<Props, 'skin' | 'root'>) {
@@ -61,7 +62,7 @@ function NoteButtons({ notes, active, onDown, onUp, keyLabels }: Omit<Props, 'sk
   );
 }
 
-export function Flute({ notes, root, skin, active, onDown, onUp, keyLabels }: Props) {
+export function Flute({ notes, root, skin, active, onDown, onUp, keyLabels, compact = false }: Props) {
   const uid = useId().replace(/:/g, '');
   const bodyId = `fbody-${uid}`;
   const keyId = `fkey-${uid}`;
@@ -70,6 +71,51 @@ export function Flute({ notes, root, skin, active, onDown, onUp, keyLabels }: Pr
   const f = sounding !== undefined ? fingeringFor(sounding, root) : null;
   const holeX = [560, 630, 700, 800, 870, 940];
   const metal = skin.finish === 'metal';
+
+  if (compact)
+    return (
+      <div className="wind">
+        <svg className="flute-strip" viewBox="0 0 400 120">
+          <defs>
+            <linearGradient id={bodyId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#000" stopOpacity={metal ? 0.35 : 0.2} />
+              <stop offset="0.14" stopColor={skin.body} />
+              <stop offset="0.34" stopColor="#fff" stopOpacity={metal ? 0.7 : 0.2} />
+              <stop offset="0.48" stopColor={skin.body} />
+              <stop offset="1" stopColor="#000" stopOpacity="0.45" />
+            </linearGradient>
+            <radialGradient id={keyId} cx="0.4" cy="0.35" r="0.7">
+              <stop offset="0" stopColor="#fff" stopOpacity="0.9" />
+              <stop offset="0.5" stopColor={skin.keys} />
+              <stop offset="1" stopColor="#000" stopOpacity="0.45" />
+            </radialGradient>
+          </defs>
+          <text x="200" y="22" textAnchor="middle" className="wind-readout">
+            {sounding !== undefined ? `${noteName(sounding)}${f?.overblow ? '  · overblow' : ''}` : 'Fingering'}
+          </text>
+          <rect x="6" y="44" width="388" height="56" rx="28" fill={skin.body} />
+          <rect x="6" y="44" width="388" height="56" rx="28" fill={`url(#${bodyId})`} />
+          {[0, 1, 2, 3, 4, 5].map((i) => {
+            const x = 58 + i * 57 + (i >= 3 ? 12 : 0);
+            const v = f?.holes[i] ?? 0;
+            return (
+              <g key={i}>
+                <circle cx={x} cy="72" r="21" fill={metal ? `url(#${keyId})` : 'none'} stroke="#000" strokeOpacity="0.35" />
+                <circle cx={x} cy="72" r="11" fill="#120d09" />
+                {v > 0 && (
+                  <path
+                    d={v === 1 ? `M ${x - 17} 72 a 17 17 0 1 0 34 0 a 17 17 0 1 0 -34 0` : `M ${x - 17} 72 a 17 17 0 0 1 34 0 Z`}
+                    fill={skin.pressed}
+                    opacity="0.92"
+                  />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+        <NoteButtons notes={notes} active={active} onDown={onDown} onUp={onUp} keyLabels={keyLabels} />
+      </div>
+    );
 
   return (
     <div className="wind">

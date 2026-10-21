@@ -1,0 +1,613 @@
+/*
+ * Phones and tablets. Every rule is scoped to <html data-mobile="portrait|landscape"> (set by lib/useMobile),
+ * so the desktop layout is never affected.
+ */
+
+:root[data-mobile] {
+  --control-h: 34px;
+  --nav-h: 58px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+:root[data-mobile] body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+:root[data-mobile] button {
+  touch-action: manipulation;
+}
+/* 16px stops iOS from zooming into focused fields */
+:root[data-mobile] .input,
+:root[data-mobile] .select {
+  font-size: 16px;
+}
+
+/* ------------------------------------------------------------------ shell */
+
+:root[data-mobile='portrait'] .app {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) calc(var(--nav-h) + var(--safe-b));
+}
+:root[data-mobile='portrait'] .rail {
+  grid-row: 2;
+  flex-direction: row;
+  justify-content: center;
+  gap: 0;
+  padding: 0 8px var(--safe-b);
+  border-right: 0;
+  border-top: 1px solid var(--border);
+}
+:root[data-mobile='portrait'] .wordmark,
+:root[data-mobile='portrait'] .rail > .spacer,
+:root[data-mobile] .rail-foot {
+  display: none;
+}
+:root[data-mobile='portrait'] .rail-nav {
+  flex: 1;
+  flex-direction: row;
+  justify-content: space-around;
+  max-width: 440px;
+}
+:root[data-mobile='portrait'] .rail-item {
+  flex: 1;
+  width: auto;
+  padding: 9px 0 6px;
+}
+:root[data-mobile] .rail-item.on {
+  background: none;
+  border-color: transparent;
+  color: var(--primary);
+}
+:root[data-mobile='portrait'] .rail-item.on::before {
+  top: -1px;
+  bottom: auto;
+  left: 32%;
+  right: 32%;
+  width: auto;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+}
+
+:root[data-mobile='landscape'] .app {
+  grid-template-columns: calc(54px + env(safe-area-inset-left, 0px)) minmax(0, 1fr);
+}
+:root[data-mobile='landscape'] .rail {
+  gap: 8px;
+  padding: 8px 0 8px env(safe-area-inset-left, 0px);
+}
+:root[data-mobile='landscape'] .wordmark span,
+:root[data-mobile='landscape'] .rail-item span {
+  display: none;
+}
+:root[data-mobile='landscape'] .rail-item {
+  width: 42px;
+  padding: 9px 0;
+}
+:root[data-mobile='landscape'] .rail-item.on::before {
+  left: -6px;
+}
+
+:root[data-mobile] .audio-gate {
+  max-width: calc(100% - 24px);
+  font-size: 0.76rem;
+  text-align: left;
+}
+
+/* ------------------------------------------------------------ bottom sheet */
+
+.sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.5);
+  animation: sheet-fade 0.18s ease;
+}
+.sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 84dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--panel);
+  border-top: 1px solid var(--border-strong);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -12px 40px -16px rgb(0 0 0 / 0.6);
+  animation: sheet-up 0.22s var(--ease);
+}
+.sheet.tall {
+  height: 88dvh;
+}
+:root[data-mobile='landscape'] .sheet {
+  max-width: 560px;
+  max-height: 94dvh;
+  margin: 0 auto;
+}
+:root[data-mobile='landscape'] .sheet.tall {
+  height: 94dvh;
+}
+.sheet-grip {
+  width: 36px;
+  height: 4px;
+  margin: 8px auto 2px;
+  border-radius: 4px;
+  background: var(--border-strong);
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 8px 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(28px);
+    opacity: 0.6;
+  }
+}
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ----------------------------------------------------------------- play */
+
+:root[data-mobile] .play.play-m {
+  display: flex;
+  flex-direction: column;
+}
+:root[data-mobile] .play-m .play-main {
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  padding: 10px 10px 8px;
+  overflow: hidden;
+}
+.m-head {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.m-head > .btn,
+.m-head > .stepper-box {
+  height: auto;
+  min-height: 46px;
+}
+.m-picker {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.m-picker .eyebrow {
+  font-size: 0.6rem;
+}
+.m-picker-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: var(--heading-weight);
+  white-space: nowrap;
+}
+.m-picker-name svg {
+  flex: none;
+}
+.m-oct .mono {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 30px;
+  line-height: 1.1;
+}
+.m-oct small {
+  font-family: var(--font-ui);
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.m-sus {
+  padding: 0 10px;
+}
+:root[data-mobile] .play-m .stage-panel {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+}
+.browser.in-sheet {
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  background: none;
+}
+.browser.in-sheet .browser-item {
+  padding: 10px;
+  font-size: 0.95rem;
+}
+.m-recent {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.m-recent .btn {
+  flex: none;
+}
+.m-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 14px 16px 20px;
+}
+.m-controls .ctl-vel {
+  width: auto;
+}
+.m-knobs {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.m-controls .take .row {
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------- instruments */
+
+.stage.is-mobile {
+  gap: 8px;
+  min-height: 0;
+}
+.stage.is-mobile.compact {
+  padding: 8px;
+}
+.stage.is-mobile .stage-bar,
+.stage.is-mobile .chord-strip {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.stage.is-mobile .stage-bar > *,
+.stage.is-mobile .chord-strip > * {
+  flex: none;
+}
+.stage.is-mobile .stage-bar::-webkit-scrollbar,
+.stage.is-mobile .chord-strip::-webkit-scrollbar,
+:root[data-mobile] .transport::-webkit-scrollbar,
+:root[data-mobile] .pr-toolbar::-webkit-scrollbar,
+:root[data-mobile] .set-nav::-webkit-scrollbar {
+  display: none;
+}
+.stage.is-mobile .stage-hint {
+  display: none;
+}
+.stage.is-mobile .chord-strip .btn {
+  min-width: 46px;
+  height: 34px;
+}
+.stage.is-mobile .stage-body {
+  justify-content: center;
+  overflow: hidden;
+}
+
+.stage.is-mobile .kb-wrap {
+  gap: 8px;
+}
+.stage.is-mobile .kb-mini {
+  height: 34px;
+}
+.stage.is-mobile .kb-case {
+  padding: 10px 6px 6px;
+  border-radius: var(--radius);
+}
+.stage.is-mobile .wk .k-name {
+  font-size: 0.72rem;
+}
+
+.stage.is-mobile .fretboard {
+  filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.3));
+}
+
+.stage.is-mobile .pads {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-width: none;
+}
+.stage.is-mobile .pad {
+  aspect-ratio: 1;
+  padding: 8px 10px;
+}
+.stage.is-mobile .pad.wide {
+  aspect-ratio: auto;
+}
+:root[data-mobile='landscape'] .stage.is-mobile .pads {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+:root[data-mobile='landscape'] .stage.is-mobile .pad {
+  aspect-ratio: 1.25;
+}
+.stage.is-mobile .drumkit {
+  max-height: 100%;
+}
+
+.stage.is-mobile .wind {
+  gap: 12px;
+}
+.stage.is-mobile .wind-notes {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+:root[data-mobile='landscape'] .stage.is-mobile .wind-notes {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+.stage.is-mobile .wind-note {
+  height: 56px;
+}
+
+/* computer-key hints mean nothing on a touch screen */
+.stage.is-mobile .wind-note kbd,
+.stage.is-mobile .pad-meta kbd,
+.stage.is-mobile .dk-key,
+.stage.is-mobile .mbar-key,
+.stage.is-mobile .pan-key {
+  display: none;
+}
+
+/* --------------------------------------------------------------- studio */
+
+:root[data-mobile] .transport {
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+:root[data-mobile] .transport > * {
+  flex: none;
+}
+:root[data-mobile] .transport > .spacer,
+:root[data-mobile] .transport .lbl,
+:root[data-mobile] .transport .lcd-time,
+:root[data-mobile] .tp-name {
+  display: none;
+}
+:root[data-mobile] .transport > .menu-wrap > .btn,
+:root[data-mobile] .transport > .btn.primary {
+  width: var(--control-h);
+  padding: 0;
+}
+:root[data-mobile] .tp-zoom {
+  width: 64px;
+}
+:root[data-mobile] .lcd-cell {
+  padding: 0 8px;
+}
+
+:root[data-mobile] .arr-count,
+:root[data-mobile] .th-bottom .select,
+:root[data-mobile] .th-audio,
+:root[data-mobile] .th-vol {
+  display: none;
+}
+:root[data-mobile] .arr-corner {
+  padding: 0 6px;
+}
+:root[data-mobile] .th-main {
+  gap: 6px;
+  padding: 4px 6px;
+}
+:root[data-mobile] .th-bottom .btn.sm.icon {
+  width: 26px;
+  height: 26px;
+}
+:root[data-mobile] .arr-add-head {
+  padding: 0 4px;
+}
+:root[data-mobile] .arr-add-head .btn {
+  width: 32px;
+  padding: 0;
+  gap: 0;
+  font-size: 0;
+}
+:root[data-mobile] .arr-add-head .btn svg {
+  width: 16px;
+  height: 16px;
+}
+:root[data-mobile] .lane-hint {
+  font-size: 0.72rem;
+}
+/* wider trim handles for fingers */
+:root[data-mobile] .clip::before,
+:root[data-mobile] .clip::after {
+  width: 12px;
+}
+
+:root[data-mobile] .dock-resize {
+  top: -10px;
+  height: 20px;
+}
+:root[data-mobile] .dock-bar {
+  gap: 8px;
+  padding: 6px 8px;
+}
+:root[data-mobile] .dock-bar .select {
+  max-width: 170px;
+}
+:root[data-mobile] .dock-hint,
+:root[data-mobile] .pr-help {
+  display: none;
+}
+:root[data-mobile] .pr-toolbar {
+  flex-wrap: nowrap;
+  padding: 6px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+:root[data-mobile] .pr-toolbar > * {
+  flex: none;
+}
+:root[data-mobile] .mx-strip,
+:root[data-mobile] .mx-master,
+:root[data-mobile] .mx-input {
+  width: 96px;
+}
+
+/* menus open as a panel above the tab bar instead of dropping off-screen */
+:root[data-mobile] .menu:not(.ctx) {
+  position: fixed;
+  top: auto;
+  left: 10px;
+  right: 10px;
+  bottom: calc(var(--nav-h) + var(--safe-b) + 10px);
+  z-index: 80;
+}
+:root[data-mobile='landscape'] .menu:not(.ctx) {
+  left: auto;
+  bottom: 10px;
+  min-width: 280px;
+}
+:root[data-mobile] .menu button {
+  padding: 11px 12px;
+  font-size: 0.95rem;
+}
+
+/* ------------------------------------------------------------- settings */
+
+:root[data-mobile] .settings {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:root[data-mobile] .set-nav {
+  flex-direction: row;
+  gap: 6px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-right: 0;
+  border-bottom: 1px solid var(--border);
+}
+:root[data-mobile] .set-nav h1,
+:root[data-mobile] .set-nav-item small {
+  display: none;
+}
+:root[data-mobile] .set-nav-item {
+  flex: none;
+  padding: 7px 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+:root[data-mobile] .set-nav-item.on {
+  border-color: var(--primary);
+  background: rgb(var(--primary-rgb) / 0.12);
+  box-shadow: none;
+}
+:root[data-mobile] .set-body {
+  gap: 24px;
+  padding: 16px 14px calc(40px + var(--safe-b));
+}
+:root[data-mobile] .set-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+:root[data-mobile] .set-row-control {
+  min-width: 0;
+  justify-content: flex-start;
+  overflow-x: auto;
+}
+:root[data-mobile] .presets,
+:root[data-mobile] .font-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+:root[data-mobile] .color-groups,
+:root[data-mobile] .skin-fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+:root[data-mobile] .skin-tabs,
+:root[data-mobile] .seg {
+  max-width: 100%;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+:root[data-mobile] .seg button {
+  flex: none;
+}
+:root[data-mobile] .skin-preview {
+  padding: 10px;
+  overflow: hidden;
+}
+.m-picker-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flute-strip {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 150px;
+}
+.stage.is-mobile .wind-note span {
+  font-size: 1.05rem;
+}
+:root[data-mobile='portrait'] .stage.is-mobile .wind-note {
+  height: 64px;
+}
+.ml-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.m-controls > .stepper,
+.m-controls > .btn {
+  align-self: flex-start;
+}
+.m-controls .stepper-box {
+  align-self: flex-start;
+}
+/* with the instrument menu showing, the dock tabs shrink to icons */
+:root[data-mobile] .dock-bar.has-picker .seg button {
+  gap: 0;
+  padding: 0 11px;
+  font-size: 0;
+}
+:root[data-mobile] .dock-bar.has-picker .seg button svg {
+  width: 16px;
+  height: 16px;
+}
+:root[data-mobile] .dock-bar .select {
+  flex: 1;
+  min-width: 0;
+}
+:root[data-mobile] .dock-bar.has-picker .spacer {
+  display: none;
+}

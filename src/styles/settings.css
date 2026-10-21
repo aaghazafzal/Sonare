@@ -349,32 +349,3 @@
   padding: 6px 14px 6px 0;
   font-size: 0.88rem;
 }
-
-@media (max-width: 900px) {
-  .settings {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-  .set-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 10px 12px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .set-nav h1,
-  .set-nav-item small {
-    display: none;
-  }
-  .set-body {
-    padding: 18px 16px 60px;
-  }
-  .set-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .set-row-control {
-    min-width: 0;
-    justify-content: flex-start;
-  }
-}

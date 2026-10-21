@@ -15,11 +15,14 @@ import './styles/app.css';
 import './styles/instruments.css';
 import './styles/studio.css';
 import './styles/settings.css';
+import './styles/mobile.css';
 import { applySettings, useSettings } from './theme/settings';
+import { installMobileDetection } from './lib/useMobile';
 import App from './App';
 
 // apply the saved theme before first paint to avoid a flash of the default colours
 applySettings(useSettings.getState());
+installMobileDetection();
 
 if (import.meta.env.DEV) {
   // handles for poking at the running app from the devtools console

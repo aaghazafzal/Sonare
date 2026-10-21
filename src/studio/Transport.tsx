@@ -119,7 +119,7 @@ export function TransportBar() {
             1.1.1
           </span>
         </div>
-        <div className="lcd-cell">
+        <div className="lcd-cell lcd-time">
           <span className="lcd-label">Time</span>
           <span className="mono lcd-value dim" ref={timeRef}>
             00:00.00
@@ -185,7 +185,7 @@ export function TransportBar() {
         </button>
       </div>
 
-      <div className="row tp-group">
+      <div className="row tp-group tp-snap">
         <Magnet size={14} className="faint" />
         <select className="select" value={s.snap} onChange={(e) => s.setUi({ snap: Number(e.target.value) })} aria-label="Snap">
           {SNAPS.map((o) => (
@@ -222,7 +222,7 @@ export function TransportBar() {
 
       <div className="menu-wrap">
         <button className="btn" onClick={() => setMenu((m) => !m)}>
-          <Save /> Project
+          <Save /> <span className="lbl">Project</span>
         </button>
         {menu && (
           <div className="menu" onMouseLeave={() => setMenu(false)}>
@@ -293,7 +293,7 @@ export function TransportBar() {
         }}
         title="Render the whole song to a WAV file (plays in real time)"
       >
-        <Download /> {bouncing !== null ? `Exporting ${Math.round(bouncing * 100)}%` : 'Export WAV'}
+        <Download /> <span className="lbl">{bouncing !== null ? `Exporting ${Math.round(bouncing * 100)}%` : 'Export WAV'}</span>
       </button>
     </div>
   );

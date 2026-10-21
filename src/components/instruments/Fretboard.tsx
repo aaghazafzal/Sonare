@@ -43,7 +43,10 @@ export function tuningsFor(instrumentId: string, view: string): Tuning[] {
 
 const INLAYS = [3, 5, 7, 9, 15, 17, 19, 21];
 
-/** Horizontal neck. Fretted (guitar, bass) or fretless with position tapes (violin family). */
+/**
+ * Neck seen from the player. Fretted (guitar, bass) or fretless with position tapes (violin family).
+ * `vertical` turns it 90° (nut at the top) so a phone held upright gets wide, finger-sized strings.
+ */
 export function Fretboard({
   strings,
   frets,
@@ -54,7 +57,10 @@ export function Fretboard({
   onDown,
   onUp,
   showLabels,
-  leftHanded,
+  leftHanded: leftHandedPref,
+  vertical = false,
+  length = 1200,
+  solidWood = false,
 }: {
   strings: number[];
   frets: number;
@@ -66,9 +72,13 @@ export function Fretboard({
   onUp: (stringIdx: number, fret: number) => void;
   showLabels: boolean;
   leftHanded: boolean;
+  vertical?: boolean;
+  length?: number; // drawing length along the neck; shorter = chunkier frets
+  solidWood?: boolean; // paint an opaque wood base under the shading
 }) {
   const uid = useId().replace(/:/g, '');
-  const W = 1200;
+  const leftHanded = leftHandedPref && !vertical;
+  const W = length;
   const H = 280;
   const openW = 64; // area left of the nut for open strings
   const n = strings.length;
@@ -81,10 +91,16 @@ export function Fretboard({
     const xs = [openW];
     for (let f = 1; f <= frets; f++) xs.push(openW + (W - openW - 10) * scale * (1 - Math.pow(2, -f / 12)));
     return xs;
-  }, [frets]);
+  }, [frets, W]);
   // highest string drawn at top, like looking down at the neck while playing
   const yOf = (s: number) => padY + gap * (n - 1 - s) + gap / 2;
   const centreX = (f: number) => (f === 0 ? openW / 2 : (fretX[f - 1] + fretX[f]) / 2);
+  // upright neck: string names sit above the strings instead of on top of them
+  const stringStart = vertical ? 34 : 0;
+  const openLabelX = vertical ? 16 : openW / 2 - 6;
+  // keep text readable when the neck is mirrored (left-handed) or turned upright
+  const upright = (x: number, y: number) =>
+    vertical ? `rotate(-90 ${x} ${y})` : leftHanded ? `scale(-1 1) translate(${-2 * x} 0)` : undefined;
 
   const pointers = useRef(new Map<number, [number, number]>());
   const svgRef = useRef<SVGSVGElement>(null);
@@ -93,9 +109,17 @@ export function Fretboard({
     const svg = svgRef.current;
     if (!svg) return null;
     const r = svg.getBoundingClientRect();
-    let x = ((clientX - r.left) / r.width) * W;
-    if (leftHanded) x = W - x;
-    const y = ((clientY - r.top) / r.height) * H;
+    let x: number;
+    let y: number;
+    if (vertical) {
+      // inverse of translate(H 0) rotate(90): screen (sx, sy) = (H - y, x)
+      x = ((clientY - r.top) / r.height) * W;
+      y = H - ((clientX - r.left) / r.width) * H;
+    } else {
+      x = ((clientX - r.left) / r.width) * W;
+      if (leftHanded) x = W - x;
+      y = ((clientY - r.top) / r.height) * H;
+    }
     const s = n - 1 - Math.floor((y - padY) / gap);
     if (s < 0 || s >= n) return null;
     if (x < openW) return [s, 0];
@@ -142,8 +166,8 @@ export function Fretboard({
   return (
     <svg
       ref={svgRef}
-      className="fretboard"
-      viewBox={`0 0 ${W} ${H}`}
+      className={`fretboard ${vertical ? 'vertical' : ''}`}
+      viewBox={vertical ? `0 0 ${H} ${W}` : `0 0 ${W} ${H}`}
       style={{ transform: leftHanded ? 'scaleX(-1)' : undefined }}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -178,9 +202,12 @@ export function Fretboard({
           <stop offset="1" stopColor={skin.fret} />
         </linearGradient>
       </defs>
+      <g transform={vertical ? `translate(${H} 0) rotate(90)` : undefined}>
 
       {/* neck */}
       <rect x={openW} y={padY - 4} width={W - openW} height={neckH + 8} fill={skin.binding} rx="2" />
+      {/* phone necks get a solid wood base so the light binding can't show through the shading */}
+      {solidWood && <rect x={openW} y={padY - 1} width={W - openW} height={neckH + 2} fill={skin.wood} />}
       <rect x={openW} y={padY - 1} width={W - openW} height={neckH + 2} fill={`url(#${woodId})`} />
       <rect x={openW} y={padY - 1} width={W - openW} height={neckH + 2} fill="#000" filter={`url(#${grainId})`} />
 
@@ -232,10 +259,11 @@ export function Fretboard({
           <text
             key={i}
             x={centreX(i + 1)}
-            y={H - 3}
-            textAnchor="middle"
+            y={vertical ? H - 4 : H - 3}
+            textAnchor={vertical ? 'start' : 'middle'}
+            dominantBaseline={vertical ? 'middle' : undefined}
             className="fb-num"
-            transform={leftHanded ? `scale(-1 1) translate(${-2 * centreX(i + 1)} 0)` : undefined}
+            transform={vertical ? `rotate(-90 ${centreX(i + 1)} ${H - 4})` : upright(centreX(i + 1), H - 7)}
           >
             {i + 1}
           </text>
@@ -247,8 +275,8 @@ export function Fretboard({
         const thick = 1.2 + ((n - 1 - s) / Math.max(1, n - 1)) * (n <= 4 ? 3.4 : 2.6);
         return (
           <g key={s}>
-            <rect x={0} y={yOf(s) - thick / 2 + 1.5} width={W} height={thick} fill="#000" opacity="0.28" />
-            <rect x={0} y={yOf(s) - thick / 2} width={W} height={thick} fill={`url(#${strId})`} />
+            <rect x={stringStart} y={yOf(s) - thick / 2 + 1.5} width={W} height={thick} fill="#000" opacity="0.28" />
+            <rect x={stringStart} y={yOf(s) - thick / 2} width={W} height={thick} fill={`url(#${strId})`} />
           </g>
         );
       })}
@@ -271,7 +299,7 @@ export function Fretboard({
                 y={yOf(s) + 4}
                 textAnchor="middle"
                 className="fb-label on"
-                transform={leftHanded ? `scale(-1 1) translate(${-2 * centreX(f)} 0)` : undefined}
+                transform={upright(centreX(f), yOf(s))}
               >
                 {noteName(strings[s] + f, false)}
               </text>
@@ -285,15 +313,16 @@ export function Fretboard({
         strings.map((m, s) => (
           <text
             key={`o${s}`}
-            x={openW / 2 - 6}
+            x={openLabelX}
             y={yOf(s) + 4}
             textAnchor="middle"
             className="fb-open"
-            transform={leftHanded ? `scale(-1 1) translate(${-2 * (openW / 2 - 6)} 0)` : undefined}
+            transform={upright(openLabelX, yOf(s))}
           >
             {noteName(m)}
           </text>
         ))}
+      </g>
     </svg>
   );
 }

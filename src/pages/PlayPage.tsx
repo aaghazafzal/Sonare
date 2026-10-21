@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Circle, Keyboard as KbIcon, Loader2, Minus, Plus, Search, Send, Square, Usb, Play as PlayIcon } from 'lucide-react';
+import { ChevronDown, Circle, Keyboard as KbIcon, Loader2, Minus, Plus, Search, Send, SlidersHorizontal, Square, Usb, Play as PlayIcon } from 'lucide-react';
 import { InstrumentStage } from '../components/instruments/InstrumentStage';
 import { useLive, onLiveNote, setSustain, liveStrip } from '../audio/live';
 import { useLoading, ensureAudio } from '../audio/engine';
 import { enableMidi, useMidi } from '../audio/input';
 import { groupedInstruments, getInstrument, getKit, isKitId, displayName, defaultView, FAMILY_LABELS } from '../lib/instruments';
-import { Knob, LevelMeter, Range } from '../components/ui';
+import { Knob, LevelMeter, Range, Sheet } from '../components/ui';
+import { useMobile } from '../lib/useMobile';
 import { useStudio, makeTrack, uid } from '../studio/store';
 import type { MidiClip, Note } from '../studio/types';
 import { liveVoice } from '../audio/live';
@@ -13,7 +14,7 @@ import * as Tone from 'tone';
 
 const RECENT_KEY = 'sonare.recent';
 
-function InstrumentBrowser({ value, onPick }: { value: string; onPick: (id: string) => void }) {
+function InstrumentBrowser({ value, onPick, inSheet = false }: { value: string; onPick: (id: string) => void; inSheet?: boolean }) {
   const [q, setQ] = useState('');
   const pending = useLoading((s) => s.pending);
   const groups = useMemo(() => groupedInstruments(), []);
@@ -22,11 +23,11 @@ function InstrumentBrowser({ value, onPick }: { value: string; onPick: (id: stri
     .filter((g) => g.items.length);
   const activeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest' });
+    activeRef.current?.scrollIntoView({ block: inSheet ? 'center' : 'nearest' });
   }, []);
 
   return (
-    <aside className="browser">
+    <aside className={`browser ${inSheet ? 'in-sheet' : ''}`}>
       <div className="browser-search">
         <Search size={14} />
         <input
@@ -196,6 +197,124 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
   };
 
   const familyLabel = isKitId(live.instrumentId) ? FAMILY_LABELS.drums : FAMILY_LABELS[inst?.family ?? ''] ?? '';
+  const mobile = useMobile();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const isKit = isKitId(live.instrumentId);
+  const signed = (v: number) => (v > 0 ? `+${v}` : String(v));
+
+  if (mobile)
+    return (
+      <div className="play play-m">
+        <div className="play-main">
+          <header className="m-head">
+            <button className="m-picker" onClick={() => setPickerOpen(true)} aria-label="Choose instrument">
+              <span className="eyebrow">{familyLabel}</span>
+              <span className="m-picker-name">
+                <span className="m-picker-text">{displayName(live.instrumentId)}</span>
+                {loading ? <Loader2 size={15} className="spin faint" /> : <ChevronDown size={16} className="faint" />}
+              </span>
+            </button>
+            {!isKit && (
+              <div className="stepper-box m-oct" aria-label="Octave">
+                <button className="btn sm icon ghost" onClick={() => live.set({ octave: Math.max(-3, live.octave - 1) })} aria-label="Octave down">
+                  <Minus />
+                </button>
+                <span className="mono">
+                  <small>Oct</small>
+                  {signed(live.octave)}
+                </span>
+                <button className="btn sm icon ghost" onClick={() => live.set({ octave: Math.min(3, live.octave + 1) })} aria-label="Octave up">
+                  <Plus />
+                </button>
+              </div>
+            )}
+            {!isKit && (
+              <button className={`btn m-sus ${live.sustain ? 'on' : ''}`} onPointerDown={() => setSustain(!live.sustain)}>
+                Sus
+              </button>
+            )}
+            <button className="btn icon" onClick={() => setMoreOpen(true)} aria-label="Sound and recording controls">
+              <SlidersHorizontal />
+            </button>
+          </header>
+
+          <div className="stage-panel panel">
+            <InstrumentStage
+              instrumentId={live.instrumentId}
+              nativeView={defaultView(live.instrumentId)}
+              view={live.view}
+              onViewChange={(v) => live.set({ view: v })}
+            />
+          </div>
+        </div>
+
+        <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Instruments" tall>
+          {recent.filter((r) => r !== live.instrumentId).length > 0 && (
+            <div className="m-recent">
+              {recent
+                .filter((r) => r !== live.instrumentId)
+                .slice(0, 6)
+                .map((r) => (
+                  <button
+                    key={r}
+                    className="btn sm"
+                    onClick={() => {
+                      pick(r);
+                      setPickerOpen(false);
+                    }}
+                  >
+                    {displayName(r)}
+                  </button>
+                ))}
+            </div>
+          )}
+          <InstrumentBrowser
+            inSheet
+            value={live.instrumentId}
+            onPick={(id) => {
+              pick(id);
+              setPickerOpen(false);
+            }}
+          />
+        </Sheet>
+
+        <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Sound & recording">
+          <div className="m-controls">
+            {!isKit && (
+              <Stepper label="Transpose" value={live.transpose} min={-12} max={12} onChange={(v) => live.set({ transpose: v })} format={signed} />
+            )}
+            <div className="ctl-vel">
+              <span className="field-label">
+                Velocity <span className="mono faint">{Math.round(live.velocity * 127)}</span>
+              </span>
+              <Range value={live.velocity} min={0.1} max={1} onChange={(v) => live.set({ velocity: v })} ariaLabel="Velocity" />
+            </div>
+            <div className="m-knobs">
+              <Knob size={44} value={live.volume} min={-30} max={6} defaultValue={0} label="Volume" format={(v) => `${v.toFixed(0)} dB`} onChange={(v) => live.set({ volume: v })} />
+              <Knob size={44} value={live.reverb} min={0} max={1} defaultValue={0.18} label="Reverb" format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => live.set({ reverb: v })} />
+              <LevelMeter meter={liveStrip.meter} className="ctl-meter" />
+            </div>
+            <TakeRecorder
+              onSent={() => {
+                setMoreOpen(false);
+                goStudio();
+              }}
+            />
+            {midi.supported && !midi.enabled && (
+              <button className="btn" onClick={() => void enableMidi()}>
+                <Usb /> Connect MIDI keyboard
+              </button>
+            )}
+            {midi.enabled && (
+              <span className="row faint">
+                <Usb size={14} /> {midi.devices.length ? midi.devices.join(', ') : 'MIDI on — no device connected'}
+              </span>
+            )}
+          </div>
+        </Sheet>
+      </div>
+    );
 
   return (
     <div className="play">

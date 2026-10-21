@@ -12,6 +12,7 @@ export function Mallets({
   onUp,
   keyLabels,
   showNames,
+  length = 1200,
 }: {
   low: number;
   high: number;
@@ -21,6 +22,7 @@ export function Mallets({
   onUp: (midi: number) => void;
   keyLabels?: Map<number, string>;
   showNames: boolean;
+  length?: number; // drawing width; phones use a shorter frame so bars stay tall
 }) {
   const uid = useId().replace(/:/g, '');
   const barId = `bar-${uid}`;
@@ -38,7 +40,7 @@ export function Mallets({
     return { naturals, sharps };
   }, [low, high]);
 
-  const W = 1200;
+  const W = length;
   const gap = 4;
   const bw = W / naturals.length;
   const maxH = 250;

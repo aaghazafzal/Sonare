@@ -7,8 +7,12 @@ import type { AudioClip, Clip, MidiClip, Track } from './types';
 import { TRACK_COLORS } from './types';
 import { groupedInstruments, isKitId, displayName } from '../lib/instruments';
 import { Range } from '../components/ui';
+import { useMobile, useMobileStore } from '../lib/useMobile';
 
-const HEAD = 236;
+const HEAD_DESKTOP = 236;
+const HEAD_MOBILE = 112;
+// phones get a narrow header (name + M/S/R); the instrument is picked from the Play tab instead
+const headWidth = () => (useMobileStore.getState().mode ? HEAD_MOBILE : HEAD_DESKTOP);
 const ROW = 68;
 const RULER = 34;
 
@@ -96,6 +100,8 @@ type DragMode = 'move' | 'left' | 'right';
 
 export function Arrangement() {
   const s = useStudio();
+  const mobile = useMobile();
+  const HEAD = mobile ? HEAD_MOBILE : HEAD_DESKTOP;
   const p = s.project;
   const ppb = s.pxPerBeat;
   const end = songEnd(p);
@@ -114,12 +120,12 @@ export function Arrangement() {
     const tick = () => {
       const st = useStudio.getState();
       const b = st.playing ? currentBeat() : st.cursor;
-      if (playheadRef.current) playheadRef.current.style.transform = `translateX(${HEAD + b * st.pxPerBeat}px)`;
+      if (playheadRef.current) playheadRef.current.style.transform = `translateX(${headWidth() + b * st.pxPerBeat}px)`;
       // keep the playhead visible while playing
       const sc = scrollRef.current;
       if (st.playing && sc) {
         const x = b * st.pxPerBeat;
-        if (x > sc.scrollLeft + sc.clientWidth - HEAD - 40 || x < sc.scrollLeft) sc.scrollLeft = Math.max(0, x - 80);
+        if (x > sc.scrollLeft + sc.clientWidth - headWidth() - 40 || x < sc.scrollLeft) sc.scrollLeft = Math.max(0, x - 80);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -461,6 +467,8 @@ export function Arrangement() {
 
 function TrackHeader({ track: t, selected }: { track: Track; selected: boolean }) {
   const s = useStudio();
+  const mobile = useMobile();
+  const HEAD = mobile ? HEAD_MOBILE : HEAD_DESKTOP;
   const up = (patch: Partial<Track>, record = true) => s.edit((pr) => mapTrack(pr, t.id, (tr) => ({ ...tr, ...patch })), record);
   const [menu, setMenu] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);

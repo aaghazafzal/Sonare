@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Music2 } from 'lucide-react';
 import { Keyboard, KeyboardMinimap } from './Keyboard';
 import { Fretboard, tuningsFor } from './Fretboard';
@@ -11,6 +11,7 @@ import { drumKeyLabels, pianoKeyLabels } from '../../audio/input';
 import { useSettings, type LabelMode } from '../../theme/settings';
 import { isKitId, VIEW_LABELS, type ViewKind } from '../../lib/instruments';
 import { CHORD_TYPES, GUITAR_CHORDS, isBlack, NOTE_NAMES, SCALES, scaleNotes } from '../../lib/notes';
+import { useMobile, useMobileStore } from '../../lib/useMobile';
 
 const WHITE_COUNT: Record<number, number> = { 49: 29, 61: 36, 76: 45, 88: 52 };
 
@@ -24,17 +25,27 @@ function whitesToSpan(low: number, whites: number) {
   return m;
 }
 
-function useWidth<T extends HTMLElement>() {
+function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
-  const [width, setWidth] = useState(1000);
-  useEffect(() => {
-    if (!ref.current) return;
-    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
-    ro.observe(ref.current);
-    return () => ro.disconnect();
+  const [size, setSize] = useState({ width: 1000, height: 400 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // measure right away so the first paint is already sized; the observer keeps it current
+    setSize({ width: el.clientWidth, height: el.clientHeight });
+    const ro = new ResizeObserver(([e]) => setSize({ width: e.contentRect.width, height: e.contentRect.height }));
+    ro.observe(el);
+    const onResize = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    window.addEventListener('resize', onResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
-  return [ref, width] as const;
+  return [ref, size.width, size.height] as const;
 }
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 function windBase(id: string) {
   if (/piccolo|whistle/.test(id)) return 74;
@@ -78,14 +89,34 @@ export function InstrumentStage({
   const setLive = useLive((s) => s.set);
   const settings = useSettings();
   const skins = settings.skins;
-  const [wrapRef, width] = useWidth<HTMLDivElement>();
+  const [wrapRef, width, height] = useSize<HTMLDivElement>();
+  const mobile = useMobile();
 
   /* keyboard */
   const desiredWhites = WHITE_COUNT[settings.keyboardKeys] ?? 36;
-  const whites = Math.max(8, Math.min(desiredWhites, Math.floor(width / (compact ? 20 : 22))));
-  const [kbLow, setKbLow] = useState(36);
-  const kbHigh = Math.min(108, whitesToSpan(kbLow, whites));
+  // phones get fewer, finger-wide keys; scroll with the arrows or the overview strip
+  const whites = mobile
+    ? clamp(Math.floor(width / (mobile === 'portrait' ? 42 : 36)), 7, desiredWhites)
+    : Math.max(8, Math.min(desiredWhites, Math.floor(width / (compact ? 20 : 22))));
+  const [kbLow, setKbLow] = useState(() => (useMobileStore.getState().mode ? 60 : 36));
+  const showMinimap = settings.showMinimap && (!compact || !!mobile);
+  // a tall phone screen stacks two rows (the upper row continues where the lower one ends)
+  const kbSpace = height - (showMinimap ? 42 : 4);
+  const kbRows = mobile === 'portrait' && kbSpace >= 520 ? 2 : 1;
+  // stacked rows are whole octaves (C…B) so no black key is split between them
+  const rowOctaves = Math.max(1, Math.floor(whites / 7));
+  const rowLow = kbRows === 2 ? Math.min(84, kbLow - (kbLow % 12)) : kbLow;
+  const kbHigh = kbRows === 2 ? rowLow + rowOctaves * 12 - 1 : Math.min(108, whitesToSpan(kbLow, whites));
+  const kbLow2 = rowLow + rowOctaves * 12;
+  const kbHigh2 = Math.min(108, kbLow2 + rowOctaves * 12 - 1);
+  const kbTop = kbRows === 2 ? kbHigh2 : kbHigh;
+  const kbHeight = mobile ? clamp((kbSpace - (kbRows - 1) * 10) / kbRows, 140, kbRows === 2 ? 320 : 440) : compact ? 150 : 230;
   useEffect(() => {
+    if (mobile) {
+      // small keyboards follow the octave buttons directly
+      setKbLow(clamp((kbRows === 2 ? 48 : 60) + octave * 12, 21, 96));
+      return;
+    }
     // keep the computer-keyboard octave in view when it changes
     const lo = 48 + octave * 12;
     const hi = lo + 31;
@@ -94,7 +125,7 @@ export function InstrumentStage({
       while (isBlack(next)) next--;
       setKbLow(next);
     }
-  }, [octave]);
+  }, [octave, kbRows]);
   const pianoLabels = useMemo(() => pianoKeyLabels(octave), [octave]);
   const drumLabels = useMemo(() => drumKeyLabels(), []);
 
@@ -104,10 +135,18 @@ export function InstrumentStage({
   const tuning = tunings.find((t) => t.id === tuningId) ?? tunings[0];
   const [held, setHeld] = useState<Record<string, true>>({});
   const fretless = view === 'strings';
-  const frets = fretless ? 14 : view === 'bass' ? Math.min(settings.guitarFrets, 17) : settings.guitarFrets;
+  const maxFrets = fretless ? 14 : view === 'bass' ? Math.min(settings.guitarFrets, 17) : settings.guitarFrets;
+  // on phones the neck is sized to the space: upright in portrait, shorter and taller in landscape
+  const neckVertical = mobile === 'portrait';
+  const neckLength = !mobile
+    ? 1200
+    : neckVertical
+      ? clamp((280 * height) / Math.max(1, width), 420, 1200)
+      : clamp((280 * width) / Math.max(1, height - 4), 560, 1200);
+  const frets = mobile ? clamp(Math.round((neckLength - 64) / (neckVertical ? 88 : 80)), 4, maxFrets) : maxFrets;
 
   /* drums */
-  const [drumLayout, setDrumLayout] = useState<'kit' | 'pads'>('kit');
+  const [drumLayout, setDrumLayout] = useState<'kit' | 'pads'>(() => (useMobileStore.getState().mode === 'portrait' ? 'pads' : 'kit'));
 
   /* wind + mallets */
   const [root, setRoot] = useState(2);
@@ -123,7 +162,13 @@ export function InstrumentStage({
     [root, scale, instrumentId, octave],
   );
   const malletLow = malletBase(instrumentId) + octave * 12;
-  const naturalsFit = Math.max(10, Math.min(22, Math.floor(width / 40)));
+  const naturalsFit = mobile ? clamp(Math.floor(width / 46), 7, 15) : Math.max(10, Math.min(22, Math.floor(width / 40)));
+  // tall phone screens: two one-octave frames stacked, like the keyboard
+  const malletRows = mobile === 'portrait' && height >= 560 ? 2 : 1;
+  const malletRowLow = malletLow - (((malletLow % 12) + 12) % 12);
+  const malletLength = mobile
+    ? clamp(Math.max(naturalsFit * 80, (470 * width) / Math.max(1, (height - (malletRows - 1) * 12) / malletRows)), 500, 1200)
+    : 1200;
   const malletHigh = Math.min(108, whitesToSpan(malletLow, naturalsFit));
   const [malletNames, setMalletNames] = useState(true);
 
@@ -151,7 +196,7 @@ export function InstrumentStage({
   const [lastChord, setLastChord] = useState<number[] | null>(null);
 
   return (
-    <div className={`stage ${compact ? 'compact' : ''}`}>
+    <div className={`stage ${compact ? 'compact' : ''} ${mobile ? 'is-mobile' : ''}`} data-view={view}>
       <div className="stage-bar">
         {views.length > 1 && (
           <Segmented
@@ -163,7 +208,7 @@ export function InstrumentStage({
 
         {view === 'keyboard' && (
           <>
-            <select
+            {!mobile && <select
               className="select"
               value={settings.keyboardKeys}
               onChange={(e) => settings.update({ keyboardKeys: Number(e.target.value) as 49 | 61 | 76 | 88 })}
@@ -174,7 +219,7 @@ export function InstrumentStage({
                   {n} keys
                 </option>
               ))}
-            </select>
+            </select>}
             <select
               className="select"
               value={settings.keyboardLabels}
@@ -198,9 +243,9 @@ export function InstrumentStage({
               <ChevronLeft />
             </button>
             <span className="mono faint stage-range">
-              {NOTE_NAMES[kbLow % 12]}{Math.floor(kbLow / 12) - 1}–{NOTE_NAMES[kbHigh % 12]}{Math.floor(kbHigh / 12) - 1}
+              {NOTE_NAMES[rowLow % 12]}{Math.floor(rowLow / 12) - 1}–{NOTE_NAMES[kbTop % 12]}{Math.floor(kbTop / 12) - 1}
             </span>
-            <button className="btn icon ghost" title="Scroll up an octave" onClick={() => setKbLow((l) => Math.min(108 - (kbHigh - kbLow), l + 12))}>
+            <button className="btn icon ghost" title="Scroll up an octave" onClick={() => setKbLow((l) => Math.min(108 - (kbTop - rowLow), l + 12))}>
               <ChevronRight />
             </button>
           </>
@@ -301,17 +346,30 @@ export function InstrumentStage({
       <div className="stage-body" ref={wrapRef}>
         {view === 'keyboard' && (
           <div className="kb-wrap">
-            {settings.showMinimap && !compact && (
+            {showMinimap && (
               <KeyboardMinimap
-                low={kbLow}
-                count={kbHigh - kbLow}
+                low={rowLow}
+                count={kbTop - rowLow}
                 onChange={setKbLow}
                 active={active}
                 mapped={[48 + octave * 12, 48 + octave * 12 + 31]}
               />
             )}
+            {kbRows === 2 && kbLow2 < kbHigh2 && (
+              <Keyboard
+                low={kbLow2}
+                high={kbHigh2}
+                active={active}
+                onDown={(m, v) => noteOn(m, v)}
+                onUp={(m) => noteOff(m)}
+                skin={skins.keyboard}
+                labels={settings.keyboardLabels}
+                keyLabels={pianoLabels}
+                height={kbHeight}
+              />
+            )}
             <Keyboard
-              low={kbLow}
+              low={rowLow}
               high={kbHigh}
               active={active}
               onDown={(m, v) => noteOn(m, v)}
@@ -319,7 +377,7 @@ export function InstrumentStage({
               skin={skins.keyboard}
               labels={settings.keyboardLabels}
               keyLabels={pianoLabels}
-              height={compact ? 150 : 230}
+              height={kbHeight}
             />
           </div>
         )}
@@ -335,6 +393,9 @@ export function InstrumentStage({
               held={held}
               showLabels={settings.guitarLabels}
               leftHanded={settings.leftHanded}
+              vertical={neckVertical}
+              length={neckLength}
+              solidWood={!!mobile}
               onDown={(s, f) => {
                 setHeld((h) => ({ ...h, [`${s}:${f}`]: true }));
                 noteOn(tuning.strings[s] + f);
@@ -364,10 +425,29 @@ export function InstrumentStage({
           (/pan-flute/.test(instrumentId) ? (
             <PanFlute notes={windNotes} root={root} skin={skins.wind} active={active} onDown={(m) => noteOn(m)} onUp={(m) => noteOff(m)} keyLabels={pianoLabels} />
           ) : (
-            <Flute notes={windNotes} root={root} skin={skins.wind} active={active} onDown={(m) => noteOn(m)} onUp={(m) => noteOff(m)} keyLabels={pianoLabels} />
+            <Flute notes={windNotes} root={root} skin={skins.wind} active={active} onDown={(m) => noteOn(m)} onUp={(m) => noteOff(m)} keyLabels={pianoLabels} compact={mobile === 'portrait'} />
           ))}
 
-        {view === 'mallets' && (
+        {view === 'mallets' && malletRows === 2 && (
+          <div className="ml-wrap ml-stack">
+            {[malletRowLow + 12, malletRowLow].map((lo) => (
+              <Mallets
+                key={lo}
+                low={lo}
+                high={Math.min(108, lo + 11)}
+                skin={skins.mallets}
+                active={active}
+                onDown={(m) => noteOn(m)}
+                onUp={(m) => noteOff(m)}
+                keyLabels={pianoLabels}
+                showNames={malletNames}
+                length={malletLength}
+              />
+            ))}
+          </div>
+        )}
+
+        {view === 'mallets' && malletRows === 1 && (
           <div className="ml-wrap">
             <Mallets
               low={malletLow}
@@ -378,6 +458,7 @@ export function InstrumentStage({
               onUp={(m) => noteOff(m)}
               keyLabels={pianoLabels}
               showNames={malletNames}
+              length={malletLength}
             />
           </div>
         )}
