@@ -1,0 +1,804 @@
+{
+  "total_unique_instruments": 114,
+  "total_duplicates_filtered": 24,
+  "instruments": [
+    {
+      "index": "001",
+      "name": "Accordion (Acoustic)",
+      "folder": "001 - Accordion (Acoustic)",
+      "file_count": 26,
+      "size_mb": 4.12
+    },
+    {
+      "index": "002",
+      "name": "Acoustic Double Bass",
+      "folder": "002 - Acoustic Double Bass",
+      "file_count": 88,
+      "size_mb": 1.61
+    },
+    {
+      "index": "003",
+      "name": "Alto Saxophone",
+      "folder": "003 - Alto Saxophone",
+      "file_count": 88,
+      "size_mb": 2.3
+    },
+    {
+      "index": "004",
+      "name": "Auditorium Piano",
+      "folder": "004 - Auditorium Piano",
+      "file_count": 30,
+      "size_mb": 2.74
+    },
+    {
+      "index": "005",
+      "name": "Banjo",
+      "folder": "005 - Banjo",
+      "file_count": 88,
+      "size_mb": 1.26
+    },
+    {
+      "index": "006",
+      "name": "Baritone Sax",
+      "folder": "006 - Baritone Sax",
+      "file_count": 88,
+      "size_mb": 2.37
+    },
+    {
+      "index": "007",
+      "name": "Bassoon",
+      "folder": "007 - Bassoon",
+      "file_count": 88,
+      "size_mb": 2.36
+    },
+    {
+      "index": "008",
+      "name": "Blown Bottle",
+      "folder": "008 - Blown Bottle",
+      "file_count": 88,
+      "size_mb": 2.02
+    },
+    {
+      "index": "009",
+      "name": "Bongos",
+      "folder": "009 - Bongos",
+      "file_count": 3,
+      "size_mb": 0.01
+    },
+    {
+      "index": "010",
+      "name": "Brass Ensemble (Acoustic)",
+      "folder": "010 - Brass Ensemble (Acoustic)",
+      "file_count": 30,
+      "size_mb": 2.84
+    },
+    {
+      "index": "011",
+      "name": "Bright Piano",
+      "folder": "011 - Bright Piano",
+      "file_count": 88,
+      "size_mb": 1.84
+    },
+    {
+      "index": "012",
+      "name": "Celesta",
+      "folder": "012 - Celesta",
+      "file_count": 88,
+      "size_mb": 1.37
+    },
+    {
+      "index": "013",
+      "name": "Cello",
+      "folder": "013 - Cello",
+      "file_count": 88,
+      "size_mb": 2.8
+    },
+    {
+      "index": "014",
+      "name": "Choir Aahs",
+      "folder": "014 - Choir Aahs",
+      "file_count": 88,
+      "size_mb": 2.62
+    },
+    {
+      "index": "015",
+      "name": "Church Organ",
+      "folder": "015 - Church Organ",
+      "file_count": 88,
+      "size_mb": 2.34
+    },
+    {
+      "index": "016",
+      "name": "Clarinet",
+      "folder": "016 - Clarinet",
+      "file_count": 88,
+      "size_mb": 1.98
+    },
+    {
+      "index": "017",
+      "name": "Classical Guitar (Acoustic Nylon)",
+      "folder": "017 - Classical Guitar (Acoustic Nylon)",
+      "file_count": 30,
+      "size_mb": 2.6
+    },
+    {
+      "index": "018",
+      "name": "Clavinet",
+      "folder": "018 - Clavinet",
+      "file_count": 88,
+      "size_mb": 1.88
+    },
+    {
+      "index": "019",
+      "name": "Clean Electric",
+      "folder": "019 - Clean Electric",
+      "file_count": 88,
+      "size_mb": 1.84
+    },
+    {
+      "index": "020",
+      "name": "Concert Grand Piano",
+      "folder": "020 - Concert Grand Piano",
+      "file_count": 30,
+      "size_mb": 2.64
+    },
+    {
+      "index": "021",
+      "name": "Concert Harp (Acoustic)",
+      "folder": "021 - Concert Harp (Acoustic)",
+      "file_count": 30,
+      "size_mb": 2.67
+    },
+    {
+      "index": "022",
+      "name": "Contrabass",
+      "folder": "022 - Contrabass",
+      "file_count": 88,
+      "size_mb": 2.3
+    },
+    {
+      "index": "023",
+      "name": "Distortion Guitar",
+      "folder": "023 - Distortion Guitar",
+      "file_count": 88,
+      "size_mb": 2.22
+    },
+    {
+      "index": "024",
+      "name": "Drawbar Organ",
+      "folder": "024 - Drawbar Organ",
+      "file_count": 88,
+      "size_mb": 1.97
+    },
+    {
+      "index": "025",
+      "name": "Drums (Energetic Kit)",
+      "folder": "025 - Drums (Energetic Kit)",
+      "file_count": 11,
+      "size_mb": 0.11
+    },
+    {
+      "index": "026",
+      "name": "Drums (Minimalistic Kit)",
+      "folder": "026 - Drums (Minimalistic Kit)",
+      "file_count": 11,
+      "size_mb": 0.11
+    },
+    {
+      "index": "027",
+      "name": "Drums (Monumental Kit)",
+      "folder": "027 - Drums (Monumental Kit)",
+      "file_count": 11,
+      "size_mb": 0.24
+    },
+    {
+      "index": "028",
+      "name": "Drums (Powerful Kit)",
+      "folder": "028 - Drums (Powerful Kit)",
+      "file_count": 11,
+      "size_mb": 0.27
+    },
+    {
+      "index": "029",
+      "name": "Drums (Smooth Kit)",
+      "folder": "029 - Drums (Smooth Kit)",
+      "file_count": 11,
+      "size_mb": 0.14
+    },
+    {
+      "index": "030",
+      "name": "Drums (Standard Kit)",
+      "folder": "030 - Drums (Standard Kit)",
+      "file_count": 11,
+      "size_mb": 0.13
+    },
+    {
+      "index": "031",
+      "name": "Dulcimer",
+      "folder": "031 - Dulcimer",
+      "file_count": 88,
+      "size_mb": 1.64
+    },
+    {
+      "index": "032",
+      "name": "Electric Bass",
+      "folder": "032 - Electric Bass",
+      "file_count": 88,
+      "size_mb": 1.62
+    },
+    {
+      "index": "033",
+      "name": "Electric Grand",
+      "folder": "033 - Electric Grand",
+      "file_count": 88,
+      "size_mb": 1.89
+    },
+    {
+      "index": "034",
+      "name": "Electric Piano 1",
+      "folder": "034 - Electric Piano 1",
+      "file_count": 88,
+      "size_mb": 1.49
+    },
+    {
+      "index": "035",
+      "name": "Electric Piano 2",
+      "folder": "035 - Electric Piano 2",
+      "file_count": 88,
+      "size_mb": 1.52
+    },
+    {
+      "index": "036",
+      "name": "Electric Piano 3",
+      "folder": "036 - Electric Piano 3",
+      "file_count": 88,
+      "size_mb": 1.68
+    },
+    {
+      "index": "037",
+      "name": "Electric Piano 4",
+      "folder": "037 - Electric Piano 4",
+      "file_count": 88,
+      "size_mb": 1.72
+    },
+    {
+      "index": "038",
+      "name": "English Horn",
+      "folder": "038 - English Horn",
+      "file_count": 88,
+      "size_mb": 2.0
+    },
+    {
+      "index": "039",
+      "name": "Flamenco Guitar",
+      "folder": "039 - Flamenco Guitar",
+      "file_count": 30,
+      "size_mb": 2.0
+    },
+    {
+      "index": "040",
+      "name": "Flute",
+      "folder": "040 - Flute",
+      "file_count": 88,
+      "size_mb": 2.02
+    },
+    {
+      "index": "041",
+      "name": "French Horn",
+      "folder": "041 - French Horn",
+      "file_count": 88,
+      "size_mb": 2.05
+    },
+    {
+      "index": "042",
+      "name": "Fretless Bass",
+      "folder": "042 - Fretless Bass",
+      "file_count": 88,
+      "size_mb": 1.78
+    },
+    {
+      "index": "043",
+      "name": "Glockenspiel",
+      "folder": "043 - Glockenspiel",
+      "file_count": 88,
+      "size_mb": 1.75
+    },
+    {
+      "index": "044",
+      "name": "Grand Classical Piano",
+      "folder": "044 - Grand Classical Piano",
+      "file_count": 30,
+      "size_mb": 3.91
+    },
+    {
+      "index": "045",
+      "name": "Grand Piano 1",
+      "folder": "045 - Grand Piano 1",
+      "file_count": 88,
+      "size_mb": 4.92
+    },
+    {
+      "index": "046",
+      "name": "Guitar Harmonics",
+      "folder": "046 - Guitar Harmonics",
+      "file_count": 88,
+      "size_mb": 1.99
+    },
+    {
+      "index": "047",
+      "name": "Guitar Tuner",
+      "folder": "047 - Guitar Tuner",
+      "file_count": 7,
+      "size_mb": 0.05
+    },
+    {
+      "index": "048",
+      "name": "Halo Pad",
+      "folder": "048 - Halo Pad",
+      "file_count": 88,
+      "size_mb": 2.48
+    },
+    {
+      "index": "049",
+      "name": "Harmonica",
+      "folder": "049 - Harmonica",
+      "file_count": 88,
+      "size_mb": 1.88
+    },
+    {
+      "index": "050",
+      "name": "Harpsichord",
+      "folder": "050 - Harpsichord",
+      "file_count": 88,
+      "size_mb": 1.78
+    },
+    {
+      "index": "051",
+      "name": "Honky-tonk",
+      "folder": "051 - Honky-tonk",
+      "file_count": 88,
+      "size_mb": 1.74
+    },
+    {
+      "index": "052",
+      "name": "Jazz Guitar",
+      "folder": "052 - Jazz Guitar",
+      "file_count": 88,
+      "size_mb": 1.55
+    },
+    {
+      "index": "053",
+      "name": "Jazz Piano",
+      "folder": "053 - Jazz Piano",
+      "file_count": 30,
+      "size_mb": 2.09
+    },
+    {
+      "index": "054",
+      "name": "Koto",
+      "folder": "054 - Koto",
+      "file_count": 30,
+      "size_mb": 1.29
+    },
+    {
+      "index": "055",
+      "name": "Marimba",
+      "folder": "055 - Marimba",
+      "file_count": 88,
+      "size_mb": 1.35
+    },
+    {
+      "index": "056",
+      "name": "Mixed Percussion",
+      "folder": "056 - Mixed Percussion",
+      "file_count": 26,
+      "size_mb": 1.51
+    },
+    {
+      "index": "057",
+      "name": "Music Box",
+      "folder": "057 - Music Box",
+      "file_count": 88,
+      "size_mb": 1.48
+    },
+    {
+      "index": "058",
+      "name": "Muted Guitar",
+      "folder": "058 - Muted Guitar",
+      "file_count": 88,
+      "size_mb": 1.43
+    },
+    {
+      "index": "059",
+      "name": "Muted Trumpet",
+      "folder": "059 - Muted Trumpet",
+      "file_count": 88,
+      "size_mb": 2.31
+    },
+    {
+      "index": "060",
+      "name": "Oboe",
+      "folder": "060 - Oboe",
+      "file_count": 88,
+      "size_mb": 1.86
+    },
+    {
+      "index": "061",
+      "name": "Ocarina",
+      "folder": "061 - Ocarina",
+      "file_count": 88,
+      "size_mb": 1.84
+    },
+    {
+      "index": "062",
+      "name": "Orchestra Hit",
+      "folder": "062 - Orchestra Hit",
+      "file_count": 88,
+      "size_mb": 1.78
+    },
+    {
+      "index": "063",
+      "name": "Organ",
+      "folder": "063 - Organ",
+      "file_count": 26,
+      "size_mb": 4.41
+    },
+    {
+      "index": "064",
+      "name": "Oud",
+      "folder": "064 - Oud",
+      "file_count": 26,
+      "size_mb": 2.11
+    },
+    {
+      "index": "065",
+      "name": "Overdrive Guitar",
+      "folder": "065 - Overdrive Guitar",
+      "file_count": 88,
+      "size_mb": 1.96
+    },
+    {
+      "index": "066",
+      "name": "Pan Flute",
+      "folder": "066 - Pan Flute",
+      "file_count": 88,
+      "size_mb": 2.33
+    },
+    {
+      "index": "067",
+      "name": "Percussive Organ",
+      "folder": "067 - Percussive Organ",
+      "file_count": 88,
+      "size_mb": 2.23
+    },
+    {
+      "index": "068",
+      "name": "Piccolo",
+      "folder": "068 - Piccolo",
+      "file_count": 88,
+      "size_mb": 2.16
+    },
+    {
+      "index": "069",
+      "name": "Pick Bass",
+      "folder": "069 - Pick Bass",
+      "file_count": 88,
+      "size_mb": 1.47
+    },
+    {
+      "index": "070",
+      "name": "Pizzicato Strings",
+      "folder": "070 - Pizzicato Strings",
+      "file_count": 88,
+      "size_mb": 1.56
+    },
+    {
+      "index": "071",
+      "name": "Recorder",
+      "folder": "071 - Recorder",
+      "file_count": 88,
+      "size_mb": 1.77
+    },
+    {
+      "index": "072",
+      "name": "Reed Organ",
+      "folder": "072 - Reed Organ",
+      "file_count": 88,
+      "size_mb": 1.9
+    },
+    {
+      "index": "073",
+      "name": "Rock Organ",
+      "folder": "073 - Rock Organ",
+      "file_count": 88,
+      "size_mb": 2.31
+    },
+    {
+      "index": "074",
+      "name": "Saxophone",
+      "folder": "074 - Saxophone",
+      "file_count": 30,
+      "size_mb": 2.81
+    },
+    {
+      "index": "075",
+      "name": "Shakuhachi",
+      "folder": "075 - Shakuhachi",
+      "file_count": 88,
+      "size_mb": 2.24
+    },
+    {
+      "index": "076",
+      "name": "Sitar (Acoustic Resonance)",
+      "folder": "076 - Sitar (Acoustic Resonance)",
+      "file_count": 26,
+      "size_mb": 2.08
+    },
+    {
+      "index": "077",
+      "name": "Slap Bass 1",
+      "folder": "077 - Slap Bass 1",
+      "file_count": 88,
+      "size_mb": 1.77
+    },
+    {
+      "index": "078",
+      "name": "Slap Bass 2",
+      "folder": "078 - Slap Bass 2",
+      "file_count": 88,
+      "size_mb": 1.62
+    },
+    {
+      "index": "079",
+      "name": "Slow Strings",
+      "folder": "079 - Slow Strings",
+      "file_count": 88,
+      "size_mb": 2.68
+    },
+    {
+      "index": "080",
+      "name": "Soprano Sax",
+      "folder": "080 - Soprano Sax",
+      "file_count": 88,
+      "size_mb": 1.86
+    },
+    {
+      "index": "081",
+      "name": "Square Lead",
+      "folder": "081 - Square Lead",
+      "file_count": 88,
+      "size_mb": 1.97
+    },
+    {
+      "index": "082",
+      "name": "Stage Piano",
+      "folder": "082 - Stage Piano",
+      "file_count": 30,
+      "size_mb": 2.57
+    },
+    {
+      "index": "083",
+      "name": "Steel Drums",
+      "folder": "083 - Steel Drums",
+      "file_count": 88,
+      "size_mb": 1.39
+    },
+    {
+      "index": "084",
+      "name": "Steel Guitar",
+      "folder": "084 - Steel Guitar",
+      "file_count": 88,
+      "size_mb": 1.77
+    },
+    {
+      "index": "085",
+      "name": "Steel Pan",
+      "folder": "085 - Steel Pan",
+      "file_count": 26,
+      "size_mb": 2.77
+    },
+    {
+      "index": "086",
+      "name": "String Ensemble",
+      "folder": "086 - String Ensemble",
+      "file_count": 88,
+      "size_mb": 2.44
+    },
+    {
+      "index": "087",
+      "name": "Studio Acoustic Grand Piano",
+      "folder": "087 - Studio Acoustic Grand Piano",
+      "file_count": 88,
+      "size_mb": 2.32
+    },
+    {
+      "index": "088",
+      "name": "Synth Bass 1",
+      "folder": "088 - Synth Bass 1",
+      "file_count": 88,
+      "size_mb": 1.53
+    },
+    {
+      "index": "089",
+      "name": "Synth Bass 2",
+      "folder": "089 - Synth Bass 2",
+      "file_count": 88,
+      "size_mb": 1.58
+    },
+    {
+      "index": "090",
+      "name": "Synth Brass 1",
+      "folder": "090 - Synth Brass 1",
+      "file_count": 88,
+      "size_mb": 2.81
+    },
+    {
+      "index": "091",
+      "name": "Synth Brass 2",
+      "folder": "091 - Synth Brass 2",
+      "file_count": 88,
+      "size_mb": 2.17
+    },
+    {
+      "index": "092",
+      "name": "Synth Lead",
+      "folder": "092 - Synth Lead",
+      "file_count": 88,
+      "size_mb": 2.55
+    },
+    {
+      "index": "093",
+      "name": "Synth Strings 1",
+      "folder": "093 - Synth Strings 1",
+      "file_count": 88,
+      "size_mb": 2.11
+    },
+    {
+      "index": "094",
+      "name": "Synth Strings 2",
+      "folder": "094 - Synth Strings 2",
+      "file_count": 88,
+      "size_mb": 1.91
+    },
+    {
+      "index": "095",
+      "name": "Synth Voice",
+      "folder": "095 - Synth Voice",
+      "file_count": 88,
+      "size_mb": 2.48
+    },
+    {
+      "index": "096",
+      "name": "Taiko Drum",
+      "folder": "096 - Taiko Drum",
+      "file_count": 88,
+      "size_mb": 1.52
+    },
+    {
+      "index": "097",
+      "name": "Tango Accordion",
+      "folder": "097 - Tango Accordion",
+      "file_count": 88,
+      "size_mb": 2.37
+    },
+    {
+      "index": "098",
+      "name": "Tenor Saxophone",
+      "folder": "098 - Tenor Saxophone",
+      "file_count": 88,
+      "size_mb": 2.1
+    },
+    {
+      "index": "099",
+      "name": "Timpani",
+      "folder": "099 - Timpani",
+      "file_count": 88,
+      "size_mb": 1.92
+    },
+    {
+      "index": "100",
+      "name": "Tinkle Bell",
+      "folder": "100 - Tinkle Bell",
+      "file_count": 88,
+      "size_mb": 1.58
+    },
+    {
+      "index": "101",
+      "name": "Tremolo Strings",
+      "folder": "101 - Tremolo Strings",
+      "file_count": 88,
+      "size_mb": 2.33
+    },
+    {
+      "index": "102",
+      "name": "Trombone",
+      "folder": "102 - Trombone",
+      "file_count": 88,
+      "size_mb": 2.29
+    },
+    {
+      "index": "103",
+      "name": "Trumpet",
+      "folder": "103 - Trumpet",
+      "file_count": 88,
+      "size_mb": 2.31
+    },
+    {
+      "index": "104",
+      "name": "Tuba",
+      "folder": "104 - Tuba",
+      "file_count": 88,
+      "size_mb": 2.14
+    },
+    {
+      "index": "105",
+      "name": "Tubular Bells",
+      "folder": "105 - Tubular Bells",
+      "file_count": 88,
+      "size_mb": 1.69
+    },
+    {
+      "index": "106",
+      "name": "Ukulele",
+      "folder": "106 - Ukulele",
+      "file_count": 13,
+      "size_mb": 0.09
+    },
+    {
+      "index": "107",
+      "name": "Upright Piano",
+      "folder": "107 - Upright Piano",
+      "file_count": 30,
+      "size_mb": 4.66
+    },
+    {
+      "index": "108",
+      "name": "Vibraphone",
+      "folder": "108 - Vibraphone",
+      "file_count": 88,
+      "size_mb": 1.56
+    },
+    {
+      "index": "109",
+      "name": "Viola",
+      "folder": "109 - Viola",
+      "file_count": 88,
+      "size_mb": 2.5
+    },
+    {
+      "index": "110",
+      "name": "Violin Solo (Acoustic)",
+      "folder": "110 - Violin Solo (Acoustic)",
+      "file_count": 26,
+      "size_mb": 4.12
+    },
+    {
+      "index": "111",
+      "name": "Voice Oohs",
+      "folder": "111 - Voice Oohs",
+      "file_count": 88,
+      "size_mb": 2.31
+    },
+    {
+      "index": "112",
+      "name": "Warm Pad",
+      "folder": "112 - Warm Pad",
+      "file_count": 88,
+      "size_mb": 2.02
+    },
+    {
+      "index": "113",
+      "name": "Whistle",
+      "folder": "113 - Whistle",
+      "file_count": 88,
+      "size_mb": 1.73
+    },
+    {
+      "index": "114",
+      "name": "Xylophone",
+      "folder": "114 - Xylophone",
+      "file_count": 88,
+      "size_mb": 1.26
+    }
+  ]
+}

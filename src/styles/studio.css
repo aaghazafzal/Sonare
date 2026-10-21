@@ -1,0 +1,735 @@
+.studio {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* --------------------------------------------------------------- transport */
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.tp-group {
+  gap: 4px;
+}
+.tp-zoom {
+  width: 84px;
+}
+.tp-name {
+  width: 150px;
+}
+.lcd {
+  display: flex;
+  padding: 3px 2px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.3);
+}
+.lcd-cell {
+  display: flex;
+  flex-direction: column;
+  padding: 0 9px;
+  border-right: 1px solid var(--border);
+}
+.lcd-cell:last-child {
+  border-right: 0;
+}
+.lcd-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.lcd-value {
+  font-size: 1.05rem;
+  line-height: 1.25;
+  color: var(--primary);
+  white-space: pre;
+}
+.lcd-value.dim {
+  color: var(--text-muted);
+}
+.lcd-input {
+  width: 46px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 1.05rem;
+  line-height: 1.25;
+  appearance: none;
+  cursor: text;
+}
+select.lcd-input {
+  cursor: pointer;
+}
+.lcd-input:focus {
+  outline: none;
+  color: var(--primary);
+}
+
+/* ------------------------------------------------------------- arrangement */
+
+.studio-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.arr {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  background: var(--inset);
+}
+.arr-inner {
+  position: relative;
+  min-height: 100%;
+}
+.arr-top {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.arr-corner {
+  position: sticky;
+  left: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 0 10px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+.arr-count {
+  font-size: 0.74rem;
+}
+.ruler {
+  position: relative;
+  flex: none;
+  cursor: text;
+  user-select: none;
+  touch-action: none;
+}
+.ruler-loopband {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 42%;
+  border-bottom: 1px solid var(--border);
+  cursor: ew-resize;
+}
+.ruler-loop {
+  position: absolute;
+  top: 0;
+  height: 42%;
+  background: rgb(var(--text-rgb) / 0.1);
+  border-left: 2px solid var(--text-faint);
+  border-right: 2px solid var(--text-faint);
+  pointer-events: none;
+}
+.ruler-loop.on {
+  background: rgb(var(--primary-rgb) / 0.4);
+  border-color: var(--primary);
+}
+.ruler-bar {
+  position: absolute;
+  top: 42%;
+  bottom: 0;
+  padding: 2px 0 0 4px;
+  border-left: 1px solid var(--border-strong);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  background: repeating-linear-gradient(90deg, transparent 0 calc(var(--ppb) - 1px), var(--border-strong) calc(var(--ppb) - 1px) var(--ppb)) bottom
+    left / 100% 5px no-repeat;
+  pointer-events: none;
+}
+
+.arr-row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.track-head {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex: none;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+.track-head.sel {
+  background: var(--panel-alt);
+}
+.th-color {
+  width: 5px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: var(--clip);
+  cursor: pointer;
+}
+.th-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 4px 8px;
+}
+.th-top,
+.th-bottom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.th-name {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 3px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.th-name:focus {
+  outline: 1px solid var(--primary);
+  background: var(--inset);
+}
+.th-bottom .select {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding-left: 6px;
+  font-size: 0.76rem;
+}
+.th-bottom .btn.sm.icon {
+  width: 22px;
+  height: 22px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.th-audio {
+  flex: 1;
+  font-size: 0.76rem;
+}
+.th-vol {
+  height: 12px;
+}
+.btn.solo.on {
+  background: var(--secondary);
+  border-color: var(--secondary);
+  color: var(--on-secondary);
+}
+
+.lane {
+  position: relative;
+  flex: none;
+  background-image: repeating-linear-gradient(90deg, rgb(var(--text-rgb) / 0.08) 0 1px, transparent 1px var(--bar)),
+    repeating-linear-gradient(90deg, rgb(var(--text-rgb) / 0.03) 0 1px, transparent 1px var(--ppb));
+}
+.arr-row.sel .lane {
+  background-color: rgb(var(--text-rgb) / 0.025);
+}
+.lane-hint {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.clip {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--clip) 60%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--clip) 20%, var(--panel));
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.clip:active {
+  cursor: grabbing;
+}
+.clip::before,
+.clip::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  z-index: 2;
+  cursor: ew-resize;
+}
+.clip::before {
+  left: 0;
+}
+.clip::after {
+  right: 0;
+}
+.clip.sel {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
+}
+.clip-head {
+  flex: none;
+  height: 16px;
+  padding: 0 6px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--clip) 50%, var(--panel));
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.clip-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.clip-notes {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 100%;
+  height: calc(100% - 8px);
+}
+.clip-wave {
+  display: block;
+  opacity: 0.9;
+}
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  z-index: 4;
+  background: var(--primary);
+  pointer-events: none;
+}
+.arr-add-head {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+/* -------------------------------------------------------------------- dock */
+
+.dock {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border-strong);
+}
+.dock-resize {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  z-index: 8;
+  cursor: ns-resize;
+}
+.dock-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.dock-hint {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+.editor-empty {
+  flex: 1;
+}
+
+/* -------------------------------------------------------------- piano roll */
+
+.pr {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.pr-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.pr-name {
+  width: 140px;
+  height: calc(var(--control-h) - 4px);
+}
+.pr-help {
+  font-size: 0.74rem;
+}
+.pr-main {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--inset);
+}
+.pr-main:focus {
+  outline: none;
+}
+.pr-inner {
+  position: relative;
+}
+.pr-keys {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--panel);
+  border-right: 1px solid var(--border-strong);
+}
+.pr-key {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+}
+.pr-key.white {
+  background: color-mix(in srgb, var(--text) 7%, var(--panel));
+}
+.pr-key.black {
+  background: var(--inset);
+}
+.pr-key.c {
+  color: var(--text-muted);
+  border-bottom-color: var(--border-strong);
+}
+.pr-key.drum {
+  justify-content: flex-start;
+  white-space: nowrap;
+  padding-left: 8px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+.pr-grid {
+  position: absolute;
+  top: 0;
+  cursor: crosshair;
+  touch-action: none;
+  background-image: repeating-linear-gradient(90deg, rgb(var(--text-rgb) / 0.17) 0 1px, transparent 1px var(--barw)),
+    repeating-linear-gradient(90deg, rgb(var(--text-rgb) / 0.08) 0 1px, transparent 1px var(--ppb)),
+    repeating-linear-gradient(90deg, rgb(var(--text-rgb) / 0.035) 0 1px, transparent 1px var(--snap)),
+    repeating-linear-gradient(180deg, transparent 0 calc(var(--row) - 1px), rgb(var(--text-rgb) / 0.05) calc(var(--row) - 1px) var(--row));
+}
+.pr-rowbg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgb(var(--bg-rgb) / 0.55);
+  pointer-events: none;
+}
+.pr-note {
+  position: absolute;
+  overflow: hidden;
+  padding-left: 3px;
+  border: 1px solid color-mix(in srgb, var(--clip) 55%, black);
+  border-radius: 2px;
+  background: var(--clip);
+  opacity: var(--vel);
+  color: rgb(0 0 0 / 0.72);
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: move;
+}
+.pr-note::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+.pr-note.sel {
+  z-index: 2;
+  opacity: 1;
+  outline: 2px solid var(--text);
+}
+.pr-grid.drum .pr-note {
+  border-radius: 3px;
+}
+.pr-marquee {
+  position: absolute;
+  border: 1px dashed var(--primary);
+  background: rgb(var(--primary-rgb) / 0.08);
+  pointer-events: none;
+}
+.pr-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  z-index: 2;
+  background: var(--primary);
+  pointer-events: none;
+}
+.pr-vel {
+  position: relative;
+  flex: none;
+  height: 64px;
+  overflow: hidden;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+.vel-inner {
+  position: relative;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.vel-inner i {
+  position: absolute;
+  bottom: 0;
+  width: 4px;
+  border-radius: 2px 2px 0 0;
+  background: var(--clip);
+}
+.vel-inner i.sel {
+  background: var(--text);
+}
+.vel-label {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.audio-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------- mixer */
+
+.mixer {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.mx-strips {
+  display: flex;
+}
+.mx-strip,
+.mx-master,
+.mx-input {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  width: 108px;
+  padding: 10px 6px 10px;
+  border-right: 1px solid var(--border);
+}
+.mx-strip.sel {
+  background: var(--panel-alt);
+}
+.mx-color {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--clip);
+}
+.mx-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  overflow: hidden;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mx-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+}
+.mx-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.mx-knobs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+.mx-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mx-fader {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 110px;
+  max-height: 220px;
+}
+.fader {
+  -webkit-appearance: none;
+  appearance: none;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 26px;
+  margin: 0;
+  background: transparent;
+  cursor: ns-resize;
+}
+.fader::-webkit-slider-runnable-track {
+  width: 6px;
+  margin: 0 auto;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.fader::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 14px;
+  margin-left: -11px;
+  border: 1px solid rgb(0 0 0 / 0.5);
+  border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--text) 90%, white), color-mix(in srgb, var(--text) 70%, black) 48%, var(--text-faint) 52%, color-mix(in srgb, var(--text) 75%, black));
+  box-shadow: 0 2px 3px rgb(0 0 0 / 0.4);
+}
+.fader::-moz-range-track {
+  width: 6px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.fader::-moz-range-thumb {
+  width: 24px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--text);
+}
+.mx-meter.wide .meter {
+  width: 10px;
+}
+.mx-db {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+.mx-buttons {
+  display: flex;
+  gap: 3px;
+}
+.mx-buttons .btn {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.mx-master {
+  background: rgb(var(--panel-alt-rgb) / 0.6);
+  border-left: 1px solid var(--border);
+}
+.mx-note {
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .transport {
+    gap: 8px;
+  }
+  .tp-name {
+    display: none;
+  }
+}
+
+@media (max-width: 1420px) {
+  .tp-name {
+    display: none;
+  }
+}
+
+.mx-strip > *,
+.mx-master > *,
+.mx-input > * {
+  flex-shrink: 0;
+}
+.mx-strip > .mx-fader,
+.mx-master > .mx-fader,
+.mx-input > .mx-fader {
+  flex: 1 0 110px;
+}

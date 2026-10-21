@@ -1,0 +1,499 @@
+:root {
+  --bg: #0f1012;
+  --panel: #17181b;
+  --panel-alt: #202125;
+  --inset: #0b0c0d;
+  --border: #2a2b30;
+  --border-strong: #3c3e45;
+  --text: #ebe7df;
+  --text-muted: #a19d95;
+  --text-faint: #6a6760;
+  --primary: #e3a043;
+  --on-primary: #1c1306;
+  --secondary: #7fb0a6;
+  --on-secondary: #0d1715;
+  --highlight: #e3a043;
+  --danger: #e5534b;
+  --success: #6dbb8a;
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-lg: 9px;
+  --font-ui: 'Instrument Sans Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --heading-weight: 600;
+  --pad: 12px;
+  --gap: 8px;
+  --control-h: 30px;
+  --shadow-1: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 1px 2px rgb(0 0 0 / 0.25);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+:root[data-scheme='light'] {
+  --shadow-1: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 1px 2px rgb(40 30 10 / 0.08);
+}
+:root[data-density='compact'] {
+  --pad: 9px;
+  --gap: 6px;
+  --control-h: 26px;
+}
+:root[data-density='comfortable'] {
+  --pad: 16px;
+  --gap: 10px;
+  --control-h: 34px;
+}
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+:root[data-texture='grain'] body {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+:root[data-texture='weave'] body {
+  background-image:
+    linear-gradient(45deg, rgb(var(--text-rgb) / 0.025) 25%, transparent 25%, transparent 75%, rgb(var(--text-rgb) / 0.025) 75%),
+    linear-gradient(-45deg, rgb(var(--text-rgb) / 0.025) 25%, transparent 25%, transparent 75%, rgb(var(--text-rgb) / 0.025) 75%);
+  background-size: 9px 9px;
+}
+:root[data-texture='lines'] body {
+  background-image: repeating-linear-gradient(0deg, rgb(var(--text-rgb) / 0.025) 0 1px, transparent 1px 4px);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: var(--heading-weight);
+  letter-spacing: -0.01em;
+}
+h1 {
+  font-size: 1.55rem;
+}
+h2 {
+  font-size: 1.15rem;
+}
+h3 {
+  font-size: 1rem;
+}
+p {
+  margin: 0;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+::selection {
+  background: rgb(var(--primary-rgb) / 0.35);
+}
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.muted {
+  color: var(--text-muted);
+}
+.faint {
+  color: var(--text-faint);
+}
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.spacer {
+  flex: 1;
+}
+.divider-v {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--control-h);
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+  user-select: none;
+}
+.btn:hover {
+  border-color: var(--border-strong);
+}
+.btn:active {
+  background: var(--inset);
+  box-shadow: none;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.btn.icon {
+  width: var(--control-h);
+  padding: 0;
+}
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.btn.ghost:hover {
+  background: var(--panel-alt);
+  border-color: var(--border);
+}
+.btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.btn.primary:hover {
+  filter: brightness(1.06);
+}
+.btn.on {
+  background: rgb(var(--primary-rgb) / 0.14);
+  border-color: rgb(var(--primary-rgb) / 0.55);
+  color: var(--primary);
+}
+.btn.danger.on,
+.btn.rec.on {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.btn.rec svg {
+  color: var(--danger);
+}
+.btn.rec.on svg {
+  color: #fff;
+}
+.btn.sm {
+  height: calc(var(--control-h) - 6px);
+  padding: 0 8px;
+  font-size: 0.8rem;
+}
+.btn.sm.icon {
+  width: calc(var(--control-h) - 6px);
+  padding: 0;
+}
+
+/* -------------------------------------------------------------- segmented */
+
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.seg button {
+  height: calc(var(--control-h) - 6px);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.seg button:hover {
+  color: var(--text);
+}
+.seg button.on {
+  background: var(--panel-alt);
+  color: var(--text);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--border);
+}
+.seg button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ----------------------------------------------------------------- inputs */
+
+.input,
+.select {
+  height: var(--control-h);
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--inset);
+  color: var(--text);
+  font-size: 0.9rem;
+  min-width: 0;
+}
+.select {
+  padding-right: 26px;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 13px) 50%, calc(100% - 9px) 50%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+.select option,
+.select optgroup {
+  background: var(--panel);
+  color: var(--text);
+}
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.field > label,
+.field-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* range slider */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+  --fill: 50%;
+}
+.range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--primary) var(--fill), var(--border-strong) var(--fill));
+}
+.range::-moz-range-track {
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--primary) var(--fill), var(--border-strong) var(--fill));
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+.range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--panel);
+}
+
+/* toggle */
+.toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex: none;
+  border-radius: 18px;
+  background: var(--border-strong);
+  border: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 0.15s var(--ease);
+}
+.toggle.on {
+  background: var(--primary);
+}
+.toggle.on::after {
+  transform: translateX(14px);
+  background: var(--on-primary);
+}
+
+/* knob */
+.knob {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  user-select: none;
+  touch-action: none;
+}
+.knob svg {
+  cursor: ns-resize;
+  display: block;
+}
+.knob .knob-label {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.knob .knob-value {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* panel */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* meter */
+.meter {
+  position: relative;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.meter > i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(to top, var(--success) 0%, var(--success) 70%, var(--primary) 86%, var(--danger) 100%);
+}
+
+/* tooltip-ish key hint */
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  background: var(--panel-alt);
+  color: var(--text-muted);
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 28px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,9 @@
+node_modules
+dist
+_refs
+.claude
+public/audio
+*.log
+.DS_Store
+.vercel
+*.tsbuildinfo
