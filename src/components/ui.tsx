@@ -89,11 +89,14 @@ export function Knob({
   size = 34,
   defaultValue,
   bipolar,
+  onStart,
 }: {
   value: number;
   min: number;
   max: number;
   onChange: (v: number) => void;
+  /** called when a drag / reset begins (e.g. to take an undo snapshot) */
+  onStart?: () => void;
   label?: string;
   format?: (v: number) => string;
   size?: number;
@@ -132,7 +135,12 @@ export function Knob({
         aria-valuenow={value}
         tabIndex={0}
         onPointerDown={(e) => {
-          (e.target as Element).setPointerCapture(e.pointerId);
+          try {
+            (e.target as Element).setPointerCapture(e.pointerId);
+          } catch {
+            /* ignore */
+          }
+          onStart?.();
           drag.current = { y: e.clientY, v: value };
         }}
         onPointerMove={(e) => {

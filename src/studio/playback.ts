@@ -14,7 +14,8 @@ import {
   addChannel,
 } from './store';
 import { getBuffer, loadBuffer, storeBuffer, encodeWav, download } from './buffers';
-import type { AudioItem, Note, Pattern, Project } from './types';
+import type { AudioItem, Note, Project } from './types';
+import { scheduleProject, type ScheduleTarget } from './schedule';
 
 const transport = Tone.getTransport();
 const PPQ = transport.PPQ;
@@ -58,6 +59,7 @@ function syncGraph(p: Project) {
       delay: t.delay,
       eq: t.eq,
       comp: t.comp,
+      fx: t.fx ?? [],
     });
   }
   setMasterVolume(p.master);
@@ -65,59 +67,36 @@ function syncGraph(p: Project) {
 
 /* ------------------------------------------------------------ scheduling */
 
-/** Swing pushes every off-beat 16th later by up to a third of a 16th. */
-const swung = (start: number, swing: number) => {
-  const sixteenth = Math.round(start * 4);
-  return Math.abs(start * 4 - sixteenth) < 0.01 && sixteenth % 2 === 1 ? start + swing * (0.25 / 3) : start;
-};
-
-/** Schedule a pattern at `at` for `length` beats, repeating it when the placement is longer. */
-function schedulePattern(pat: Pattern, at: number, length: number) {
-  if (pat.length <= 0) return;
-  for (let rep = 0; rep < length; rep += pat.length) {
-    for (const [channelId, notes] of Object.entries(pat.notes)) {
-      const voice = nodes.get(channelId)?.voice;
-      if (!voice) continue;
-      for (const note of notes) {
-        if (note.start < 0 || note.start >= pat.length) continue;
-        const t = rep + swung(note.start, pat.swing);
-        if (t >= length) continue;
-        const dur = Math.min(note.dur, pat.length - note.start, length - t);
-        const durTicks = Math.max(1, Math.round(dur * PPQ));
-        transport.schedule((time) => {
-          voice.play(note.pitch, Tone.Ticks(durTicks).toSeconds(), time, note.vel);
-        }, ticks(at + t));
-      }
+const liveTarget: ScheduleTarget = {
+  transport,
+  voice: (id) => nodes.get(id)?.voice,
+  strip: (id) => nodes.get(id)?.strip,
+  masterVolume: master.volume.volume,
+  player: (item) => {
+    const node = nodes.get(item.channelId);
+    const buf = getBuffer(item.bufferId);
+    if (!node) return null;
+    if (!buf) {
+      void loadBuffer(item.bufferId).then((b) => b && requestSync());
+      return null;
     }
-  }
-}
-
-function scheduleAudio(item: AudioItem, bpm: number, used: Set<string>) {
-  const node = nodes.get(item.channelId);
-  if (!node) return;
-  const buf = getBuffer(item.bufferId);
-  if (!buf) {
-    void loadBuffer(item.bufferId).then((b) => b && requestSync());
-    return;
-  }
-  used.add(item.id);
-  let player = node.players.get(item.id);
-  if (!player) {
-    player = new Tone.Player(buf).connect(node.strip.input);
-    node.players.set(item.id, player);
-  }
-  player.volume.value = Tone.gainToDb(item.gain);
-  const startSec = (item.start * 60) / bpm;
-  const durSec = Math.min((item.length * 60) / bpm, buf.duration - item.offset);
-  if (durSec > 0) player.sync().start(startSec, item.offset, durSec);
-}
+    usedPlayers.add(item.id);
+    let player = node.players.get(item.id);
+    if (!player) {
+      player = new Tone.Player(buf).connect(node.strip.input);
+      node.players.set(item.id, player);
+    }
+    return player;
+  },
+};
+const usedPlayers = new Set<string>();
 
 function reschedule(p: Project) {
   for (const node of nodes.values()) node.players.forEach((pl) => pl.unsync().stop());
   transport.cancel(0);
   transport.bpm.value = p.bpm;
   transport.timeSignature = p.beatsPerBar;
-  const used = new Set<string>();
+  usedPlayers.clear();
 
   if (p.mode === 'pattern') {
     // pattern mode: loop the selected pattern on its own
@@ -125,35 +104,27 @@ function reschedule(p: Project) {
     transport.loop = true;
     transport.loopStart = 0;
     transport.loopEnd = ticks(Math.max(1, pat.length));
-    schedulePattern(pat, 0, pat.length);
   } else {
     transport.loop = p.loop.on;
     if (p.loop.on && p.loop.end > p.loop.start) {
       transport.loopStart = ticks(p.loop.start);
       transport.loopEnd = ticks(p.loop.end);
     }
-    const byId = new Map(p.patterns.map((x) => [x.id, x]));
-    for (const it of p.playlist) {
-      if (p.lanes[it.lane]?.mute) continue;
-      if (it.kind === 'pattern') {
-        const pat = byId.get(it.patternId);
-        if (pat) schedulePattern(pat, it.start, it.length);
-      } else scheduleAudio(it, p.bpm, used);
-    }
-    // stop at the end of the song unless looping or recording past it
-    if (!p.loop.on) {
-      const end = Math.max(songEnd(p), p.beatsPerBar);
-      transport.schedule((time) => {
-        Tone.getDraw().schedule(() => {
-          if (!useStudio.getState().recording) stop();
-        }, time);
-      }, ticks(end + 1));
-    }
+  }
+  scheduleProject(p, liveTarget);
+  if (p.mode === 'song' && !p.loop.on) {
+    // stop at the end of the song unless recording past it
+    const end = Math.max(songEnd(p), p.beatsPerBar);
+    transport.schedule((time) => {
+      Tone.getDraw().schedule(() => {
+        if (!useStudio.getState().recording) stop();
+      }, time);
+    }, ticks(end + 1));
   }
 
   for (const node of nodes.values())
     for (const [id, pl] of node.players)
-      if (!used.has(id)) {
+      if (!usedPlayers.has(id)) {
         pl.dispose();
         node.players.delete(id);
       }
@@ -212,6 +183,11 @@ export function stop() {
   transport.stop();
   nodes.forEach((n) => n.voice?.releaseAll());
   useStudio.setState({ playing: false, recording: false });
+  // automation may have moved faders: drop its pending ramps, then put the saved settings back
+  const now = Tone.now();
+  master.volume.volume.cancelScheduledValues(now);
+  nodes.forEach((n) => (['volume', 'pan', 'reverb', 'delay', 'cutoff'] as const).forEach((k) => n.strip.param(k)?.cancelScheduledValues(now)));
+  syncGraph(useStudio.getState().project);
 }
 
 export function seek(beats: number) {

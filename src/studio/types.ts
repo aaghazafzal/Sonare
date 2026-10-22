@@ -1,3 +1,6 @@
+import type { FxSlot } from '../audio/fx';
+import type { AutoParam } from '../audio/engine';
+
 export interface Note {
   id: string;
   pitch: number;
@@ -40,7 +43,18 @@ export interface AudioItem {
   gain: number;
 }
 
-export type PlaylistItem = PatternItem | AudioItem;
+/** A curve that moves one mixer parameter over time (channel id or 'master'). */
+export interface AutomationItem {
+  id: string;
+  kind: 'automation';
+  lane: number;
+  start: number; // beats
+  length: number; // beats
+  target: { channelId: string; param: AutoParam };
+  points: { t: number; v: number }[]; // t in beats from the clip start, v normalised 0..1
+}
+
+export type PlaylistItem = PatternItem | AudioItem | AutomationItem;
 
 export interface Lane {
   name: string;
@@ -65,6 +79,7 @@ export interface Track {
   delay: number; // send 0..1
   eq: { low: number; mid: number; high: number };
   comp: boolean;
+  fx?: FxSlot[]; // insert effects, in order
 }
 
 export type PlayMode = 'pattern' | 'song';

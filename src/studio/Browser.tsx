@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Drum, FileAudio, FolderOpen, LayoutTemplate,
 import { useStudio, applyPreset, addChannel, channelKind, freeLane, fromTemplate, TEMPLATE_LIST } from './store';
 import { importAudioFile } from './playback';
 import { startProject } from './projects';
+import { importMidi } from './midi';
 import { PRESETS, PRESET_CATEGORIES } from './presets';
 import { DRAG_MIME, type DragPayload } from './common';
 import { groupedInstruments } from '../lib/instruments';
@@ -32,6 +33,7 @@ export function Browser({ onClose }: { onClose?: () => void }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<Record<string, boolean>>({ templates: false, drums: true, chords: true, bass: false, melody: false, instruments: false, audio: true });
   const fileRef = useRef<HTMLInputElement>(null);
+  const midiRef = useRef<HTMLInputElement>(null);
   const groups = useMemo(() => groupedInstruments(), []);
   const ql = q.trim().toLowerCase();
   const match = (t: string) => !ql || t.toLowerCase().includes(ql);
@@ -156,8 +158,25 @@ export function Browser({ onClose }: { onClose?: () => void }) {
             </span>
             <small>vocals, loops, samples</small>
           </button>
+          <button className="br-item" onClick={() => midiRef.current?.click()} data-hint="Bring in a .mid file as a new pattern">
+            <span>
+              <FolderOpen size={13} /> Import MIDI file…
+            </span>
+            <small>melodies and beats from other apps</small>
+          </button>
         </Folder>
       </div>
+      <input
+        ref={midiRef}
+        type="file"
+        accept=".mid,.midi,audio/midi,audio/x-midi"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) void importMidi(f).catch(() => alert('That MIDI file could not be read.'));
+        }}
+      />
       <input
         ref={fileRef}
         type="file"

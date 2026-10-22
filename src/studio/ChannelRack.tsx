@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Eraser, Piano, Plus, Trash2, Mic, Circle } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Eraser, Gauge, Piano, Plus, Trash2, Mic, Circle } from 'lucide-react';
 import {
   useStudio,
   currentPattern,
@@ -12,7 +12,9 @@ import {
   removeChannel,
   channelKind,
   uid,
+  addAutomation,
 } from './store';
+import { AUTO_PARAMS } from './automation';
 import { audition, currentBeat } from './playback';
 import type { Note, Pattern, Track } from './types';
 import { InstrumentSelect, readDrag, DRAG_MIME } from './common';
@@ -54,6 +56,7 @@ export function ChannelRack() {
   const [dropHot, setDropHot] = useState(false);
   const playRef = useRef<HTMLDivElement>(null);
   const paint = useRef<{ on: boolean; last: string } | null>(null);
+  const [velMode, setVelMode] = useState(false);
   const namePress = useRef(createLongPress()).current;
 
   // step playhead
@@ -100,10 +103,29 @@ export function ChannelRack() {
     );
   };
 
+  const stepNote = (pt: Pattern, ch: string, pitch: number, step: number) =>
+    (pt.notes[ch] ?? []).find((n) => n.pitch === pitch && Math.abs(n.start - step * 0.25) < STEP_EPS);
+
+  /** Velocity mode: the pointer's height inside a step sets how hard it hits (adds the step if empty). */
+  const setStepVel = (ch: string, pitch: number, step: number, vel: number) =>
+    s.edit(
+      (pr) =>
+        setChannelNotes(pr, currentPattern(pr).id, ch, (ns) => {
+          const has = ns.some((n) => n.pitch === pitch && Math.abs(n.start - step * 0.25) < STEP_EPS);
+          if (!has) return [...ns, { id: uid(), pitch, start: step * 0.25, dur: 0.25, vel }];
+          return ns.map((n) => (n.pitch === pitch && Math.abs(n.start - step * 0.25) < STEP_EPS ? { ...n, vel } : n));
+        }),
+      false,
+    );
+  const velAt = (el: Element, y: number) => {
+    const r = el.getBoundingClientRect();
+    return Math.round(Math.max(0.05, Math.min(1, 1 - (y - r.top) / r.height)) * 100) / 100;
+  };
+
   const stepFromPoint = (x: number, y: number) => {
     const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-step]');
     if (!el) return null;
-    return { ch: el.dataset.ch!, pitch: Number(el.dataset.pitch), step: Number(el.dataset.step) };
+    return { ch: el.dataset.ch!, pitch: Number(el.dataset.pitch), step: Number(el.dataset.step), el };
   };
 
   const onStepsDown = (e: React.PointerEvent) => {
@@ -115,6 +137,13 @@ export function ChannelRack() {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
       /* pointer already released */
+    }
+    if (velMode) {
+      s.checkpoint();
+      setStepVel(hit.ch, hit.pitch, hit.step, velAt(hit.el, e.clientY));
+      paint.current = { on: true, last: '' };
+      s.setUi({ selectedTrackId: hit.ch });
+      return;
     }
     const on = !hasStep(pat, hit.ch, hit.pitch, hit.step);
     s.checkpoint();
@@ -128,6 +157,10 @@ export function ChannelRack() {
     if (!d) return;
     const hit = stepFromPoint(e.clientX, e.clientY);
     if (!hit) return;
+    if (velMode) {
+      setStepVel(hit.ch, hit.pitch, hit.step, velAt(hit.el, e.clientY));
+      return;
+    }
     const key = `${hit.ch}:${hit.pitch}:${hit.step}`;
     if (key === d.last) return;
     d.last = key;
@@ -140,15 +173,15 @@ export function ChannelRack() {
   const stepCells = (ch: Track, pitch: number) => (
     <div className="cr-cells" style={{ width: steps * STEP }}>
       {Array.from({ length: steps }).map((_, i) => {
-        const on = hasStep(pat, ch.id, pitch, i);
+        const n = stepNote(pat, ch.id, pitch, i);
         return (
           <div
             key={i}
             data-step={i}
             data-ch={ch.id}
             data-pitch={pitch}
-            className={`cr-step ${on ? 'on' : ''} ${Math.floor(i / 4) % 2 ? 'alt' : ''}`}
-            style={{ width: STEP, ['--clip' as string]: ch.color }}
+            className={`cr-step ${n ? 'on' : ''} ${Math.floor(i / 4) % 2 ? 'alt' : ''}`}
+            style={{ width: STEP, ['--clip' as string]: ch.color, ['--v' as string]: `${Math.round((n?.vel ?? 1) * 100)}%` }}
           />
         );
       })}
@@ -200,8 +233,8 @@ export function ChannelRack() {
         />
         {!mobile && (
           <div className="cr-knobs">
-            <Knob size={22} value={ch.pan} min={-1} max={1} bipolar defaultValue={0} onChange={(v) => up(ch.id, { pan: v }, false)} label="" />
-            <Knob size={22} value={ch.volume} min={-40} max={6} defaultValue={-6} onChange={(v) => up(ch.id, { volume: v }, false)} label="" />
+            <Knob size={22} value={ch.pan} min={-1} max={1} bipolar defaultValue={0} onStart={() => s.checkpoint()} onChange={(v) => up(ch.id, { pan: v }, false)} label="" />
+            <Knob size={22} value={ch.volume} min={-40} max={6} defaultValue={-6} onStart={() => s.checkpoint()} onChange={(v) => up(ch.id, { volume: v }, false)} label="" />
           </div>
         )}
         <button
@@ -390,9 +423,16 @@ export function ChannelRack() {
           ))}
         </select>
         <div className="cr-swing" data-hint="Swing: delays every second 16th for a shuffled groove">
-          <Knob size={26} value={pat.swing} min={0} max={1} defaultValue={0} onChange={(v) => s.edit((pr) => mapPattern(pr, pat.id, (x) => ({ ...x, swing: v })), false)} label="" />
+          <Knob size={26} value={pat.swing} min={0} max={1} defaultValue={0} onStart={() => s.checkpoint()} onChange={(v) => s.edit((pr) => mapPattern(pr, pat.id, (x) => ({ ...x, swing: v })), false)} label="" />
           <span className="cr-swing-label">Swing {Math.round(pat.swing * 100)}%</span>
         </div>
+        <button
+          className={`btn sm ${velMode ? 'on' : ''}`}
+          onClick={() => setVelMode((v) => !v)}
+          data-hint="Velocity mode: drag up and down inside the steps to make hits louder or softer"
+        >
+          <Gauge /> Velocity
+        </button>
         <button
           className="btn sm ghost"
           onClick={() => {
@@ -440,7 +480,7 @@ export function ChannelRack() {
 
       <div className="cr-scroll">
         <div className="cr-grid" style={{ ['--head' as string]: `${HEAD}px` }}>
-          <div className="cr-steps-wrap cr-steps" onPointerDown={onStepsDown} onPointerMove={onStepsMove} onPointerUp={onStepsUp} onPointerCancel={onStepsUp}>
+          <div className={`cr-steps-wrap cr-steps ${velMode ? 'vel-mode' : ''}`} onPointerDown={onStepsDown} onPointerMove={onStepsMove} onPointerUp={onStepsUp} onPointerCancel={onStepsUp}>
             {rows}
             <div className="cr-play" ref={playRef} style={{ left: HEAD, width: STEP }} />
           </div>
@@ -490,6 +530,29 @@ export function ChannelRack() {
               <Piano /> Open piano roll
             </button>
           )}
+          <div className="menu-heading">Automate</div>
+          <div className="menu-chips">
+            {AUTO_PARAMS.map((a) => (
+              <button
+                key={a.id}
+                className="btn sm"
+                onClick={() => {
+                  let id = '';
+                  s.edit((pr) => {
+                    const start = Math.floor(s.cursor / pr.beatsPerBar) * pr.beatsPerBar;
+                    const [next, item] = addAutomation(pr, menuCh.id, a.id, start, 4 * pr.beatsPerBar);
+                    id = item.id;
+                    return next;
+                  });
+                  s.setUi({ selectedItemId: id, dock: 'roll', dockOpen: true });
+                  setMenu(null);
+                }}
+                data-hint={`Draw how ${a.label.toLowerCase()} changes over the song`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => {
               up(menuCh.id, { arm: !menuCh.arm });

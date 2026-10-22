@@ -32,9 +32,13 @@ import {
   fromTemplate,
   TEMPLATE_LIST,
   cloneItem,
+  addAutomation,
   type DockTab,
 } from './store';
 import { bounce, currentBeat, pause, play, record, seek, stop, setMode } from './playback';
+import { exportMix, exportStems, type ExportFormat } from './render';
+import { exportMidi, importMidi } from './midi';
+import { Segmented } from '../components/ui';
 import { exportSessionFile, importSessionFile, startProject } from './projects';
 import { ProjectsPanel, SaveStatus } from './ProjectsPanel';
 import { useHint } from './common';
@@ -142,7 +146,7 @@ const GUIDE: { title: string; text: string }[] = [
   { title: 'Write melodies', text: 'Select a channel and open the Piano roll (F7). Click to draw notes, drag to move, drag the right edge to make them longer. Your computer keys and MIDI keyboard play the selected channel.' },
   { title: 'Arrange the song', text: 'Choose a pattern in the toolbar, then click on the Playlist to place it. Right-click a clip to delete it, Alt-drag to copy. Switch to SONG to play the whole arrangement.' },
   { title: 'Record vocals', text: 'Arm the Vocals channel (red dot) and press Record. A one-bar count-in plays, then sing. Your take appears on the playlist.' },
-  { title: 'Mix and export', text: 'Open the Mixer (F9) for volume, pan, EQ, compressor, reverb and delay on each channel. When it sounds right, use Export WAV.' },
+  { title: 'Mix and export', text: 'Open the Mixer (F9) for volume, pan, EQ, compressor, reverb and delay on each channel. When it sounds right, use Export (WAV, MP3 or stems).' },
 ];
 
 const SHORTCUTS: [string, string][] = [
@@ -165,9 +169,9 @@ export function Toolbar() {
   const pat = currentPattern(p);
   const posRef = useRef<HTMLSpanElement>(null);
   const [bpmText, setBpmText] = useState(String(p.bpm));
-  const [bouncing, setBouncing] = useState<number | null>(null);
-  const [modal, setModal] = useState<'guide' | 'keys' | 'projects' | null>(() => (openGuideOnce() ? 'guide' : null));
+  const [modal, setModal] = useState<'guide' | 'keys' | 'projects' | 'export' | null>(() => (openGuideOnce() ? 'guide' : null));
   const fileRef = useRef<HTMLInputElement>(null);
+  const midiRef = useRef<HTMLInputElement>(null);
   const hint = useHint((h) => h.text);
 
   useEffect(() => setBpmText(String(p.bpm)), [p.bpm]);
@@ -192,14 +196,7 @@ export function Toolbar() {
     if (v !== p.bpm) setP((pr) => ({ ...pr, bpm: v }));
   };
   const view = (d: DockTab) => s.setUi(s.dock === d && s.dockOpen ? { dockOpen: false } : { dock: d, dockOpen: true });
-  const doExport = async () => {
-    setBouncing(0);
-    try {
-      await bounce((f) => setBouncing(f));
-    } finally {
-      setBouncing(null);
-    }
-  };
+  const doExport = () => setModal('export');
   const selItem = p.playlist.find((x) => x.id === s.selectedItemId);
   const idx = p.patterns.findIndex((x) => x.id === pat.id);
   const goPattern = (d: number) => setP((pr) => ({ ...pr, currentPatternId: pr.patterns[(idx + d + pr.patterns.length) % pr.patterns.length].id }), false);
@@ -220,7 +217,11 @@ export function Toolbar() {
         { label: 'Open session file…', run: () => fileRef.current?.click() },
         { label: 'Save session file (with recordings)', hint: 'One file with the whole project and its audio — for backups or another device', run: () => void exportSessionFile(p) },
         'sep',
-        { label: 'Export WAV…', hint: 'Render the whole song to a WAV file', run: () => void doExport() },
+        { label: 'Export audio…', hint: 'WAV or MP3 of the whole song, or one file per channel (stems)', run: doExport },
+        'sep',
+        { label: 'Import MIDI file…', hint: 'Bring in a .mid — it becomes a new pattern with one channel per MIDI track', run: () => midiRef.current?.click() },
+        { label: 'Export song as MIDI', run: () => exportMidi(p, 'song') },
+        { label: `Export “${pat.name}” as MIDI`, run: () => exportMidi(p, 'pattern') },
       ],
     },
     {
@@ -251,6 +252,34 @@ export function Toolbar() {
         { label: 'Audio / vocal channel', run: () => setP((pr) => addChannel(pr, 'audio', '', 'Audio')[0]) },
         'sep',
         { label: 'New pattern', run: () => setP((pr) => newPattern(pr)[0]) },
+        'sep',
+        { heading: 'Automation clip' },
+        {
+          label: s.selectedTrackId ? `Volume of ${p.tracks.find((t) => t.id === s.selectedTrackId)?.name ?? 'channel'}` : 'Channel volume',
+          disabled: !s.selectedTrackId,
+          hint: 'A curve that changes the selected channel over time (more options: right-click a channel)',
+          run: () => {
+            let id = '';
+            setP((pr) => {
+              const [next, item] = addAutomation(pr, s.selectedTrackId!, 'volume', Math.floor(s.cursor / pr.beatsPerBar) * pr.beatsPerBar, 4 * pr.beatsPerBar);
+              id = item.id;
+              return next;
+            });
+            s.setUi({ selectedItemId: id, dock: 'roll', dockOpen: true });
+          },
+        },
+        {
+          label: 'Master volume (fade in / out)',
+          run: () => {
+            let id = '';
+            setP((pr) => {
+              const [next, item] = addAutomation(pr, 'master', 'volume', Math.floor(s.cursor / pr.beatsPerBar) * pr.beatsPerBar, 4 * pr.beatsPerBar);
+              id = item.id;
+              return next;
+            });
+            s.setUi({ selectedItemId: id, dock: 'roll', dockOpen: true });
+          },
+        },
       ],
     },
     {
@@ -459,8 +488,8 @@ export function Toolbar() {
         data-hint="Project name (used for saved files and exports)"
       />
       <FullscreenButton />
-      <button className="btn primary" disabled={bouncing !== null} onClick={() => void doExport()} data-hint="Render the whole song to a WAV file (plays in real time)">
-        <Download /> <span className="lbl">{bouncing !== null ? `Exporting ${Math.round(bouncing * 100)}%` : 'Export WAV'}</span>
+      <button className="btn primary" onClick={doExport} data-hint="Export the song as WAV or MP3, or every channel as separate stems">
+        <Download /> <span className="lbl">Export</span>
       </button>
 
       <input
@@ -511,6 +540,27 @@ export function Toolbar() {
           </div>
         </Modal>
       )}
+      <input
+        ref={midiRef}
+        type="file"
+        accept=".mid,.midi,audio/midi,audio/x-midi"
+        hidden
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (!f) return;
+          try {
+            await importMidi(f);
+          } catch {
+            alert('That MIDI file could not be read.');
+          }
+        }}
+      />
+      {modal === 'export' && (
+        <Modal title="Export" onClose={() => setModal(null)}>
+          <ExportPanel />
+        </Modal>
+      )}
       {modal === 'projects' && (
         <Modal title="My projects" onClose={() => setModal(null)}>
           <ProjectsPanel onClose={() => setModal(null)} onOpenFile={() => fileRef.current?.click()} />
@@ -544,4 +594,91 @@ export function openGuideOnce() {
   } catch {
     return false;
   }
+}
+
+function ExportPanel() {
+  const p = useStudio((st) => st.project);
+  const [what, setWhat] = useState<'mix' | 'stems'>('mix');
+  const [format, setFormat] = useState<ExportFormat>('wav');
+  const [busy, setBusy] = useState<{ msg: string; frac: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const beats = p.playlist.reduce((m, it) => Math.max(m, it.start + it.length), 0);
+  const seconds = (beats * 60) / p.bpm;
+  const mins = `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
+  const stems = p.tracks.filter((t) => !t.mute).length;
+
+  const run = async () => {
+    stop();
+    setError(null);
+    const step = (msg: string, frac: number) => setBusy({ msg, frac });
+    try {
+      if (what === 'mix') await exportMix(p, format, step);
+      else await exportStems(p, format, step);
+    } catch (err) {
+      if (what === 'mix' && format === 'wav') {
+        // last resort: record the mix in real time
+        step('Fast render failed — recording in real time instead…', 0.1);
+        try {
+          await bounce((f) => step('Recording in real time…', f));
+        } catch {
+          setError('Export failed. Try again, or export fewer channels.');
+        }
+      } else setError(err instanceof Error ? err.message : 'Export failed.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="export">
+      <div className="export-row">
+        <span className="field-label">What</span>
+        <Segmented
+          value={what}
+          onChange={setWhat}
+          options={[
+            { value: 'mix', label: 'Full mix' },
+            { value: 'stems', label: `Stems (${stems} files, zipped)` },
+          ]}
+        />
+      </div>
+      <div className="export-row">
+        <span className="field-label">Format</span>
+        <Segmented<ExportFormat>
+          value={format}
+          onChange={setFormat}
+          options={[
+            { value: 'wav', label: 'WAV (lossless)' },
+            { value: 'mp3-320', label: 'MP3 320' },
+            { value: 'mp3-192', label: 'MP3 192' },
+          ]}
+        />
+      </div>
+      <p className="muted export-note">
+        {beats > 0 ? `Song length ${mins} plus a short tail for reverb and delay.` : 'The playlist is empty, so the current pattern is exported once.'}{' '}
+        Rendering runs faster than real time; stems keep each channel's effects and pass through the master bus.
+      </p>
+      {busy && (
+        <div className="export-progress">
+          <div className="export-bar">
+            <i style={{ width: `${Math.round(busy.frac * 100)}%` }} />
+          </div>
+          <span className="faint">{busy.msg}</span>
+        </div>
+      )}
+      {error && <p className="err">{error}</p>}
+      <div className="row wrap">
+        <button className="btn primary" disabled={!!busy} onClick={() => void run()}>
+          <Download /> {busy ? 'Exporting…' : `Export ${what === 'mix' ? 'mix' : 'stems'}`}
+        </button>
+        <div className="spacer" />
+        <button className="btn" disabled={!!busy} onClick={() => exportMidi(p, 'song')} data-hint="Notes of the whole song as a .mid file for other music apps">
+          MIDI (song)
+        </button>
+        <button className="btn" disabled={!!busy} onClick={() => exportMidi(p, 'pattern')}>
+          MIDI (pattern)
+        </button>
+      </div>
+    </div>
+  );
 }

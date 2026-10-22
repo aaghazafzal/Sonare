@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Eraser, Magnet, MousePointerClick, Wand2, ZoomIn } from 'lucide-react';
+import { Eraser, Ghost, Lock, Magnet, MousePointerClick, Wand2, ZoomIn } from 'lucide-react';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { useStudio, mapPattern, mapItem, setChannelNotes, uid, currentPattern } from './store';
 import { audition, currentBeat } from './playback';
 import type { AudioItem, Note, Pattern, Track } from './types';
 import { DRUM_PIECES } from '../lib/instruments';
-import { isBlack, noteName, pitchClass } from '../lib/notes';
+import { inScale, isBlack, noteName, NOTE_NAMES, pitchClass, SCALES } from '../lib/notes';
 import { Range } from '../components/ui';
+import { AutomationEditor } from './AutomationEditor';
 
 const VEL_H = 64;
+
+/** Piano-roll helpers that stay between sessions. */
+const useRollPrefs = create<{ root: number; scale: string; lock: boolean; ghosts: boolean; set: (p: Partial<{ root: number; scale: string; lock: boolean; ghosts: boolean }>) => void }>()(
+  persist((set) => ({ root: 0, scale: 'off', lock: false, ghosts: true, set: (p) => set(p) }), { name: 'sonare.roll' }),
+);
 const SNAPS = [
   { v: 1, label: '1/4' },
   { v: 0.5, label: '1/8' },
@@ -23,6 +31,7 @@ export function PianoRollPanel() {
   const p = s.project;
   const item = p.playlist.find((x) => x.id === s.selectedItemId);
   if (item?.kind === 'audio') return <AudioItemPanel item={item} />;
+  if (item?.kind === 'automation') return <AutomationEditor key={item.id} item={item} />;
   const pattern = currentPattern(p);
   const channels = p.tracks.filter((t) => t.kind !== 'audio');
   const track = channels.find((t) => t.id === s.selectedTrackId) ?? channels[0];
@@ -80,6 +89,19 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
   const s = useStudio();
   const notes = pattern.notes[track.id] ?? [];
   const len = pattern.length;
+  const prefs = useRollPrefs();
+  const scaleOn = prefs.scale !== 'off' && track.kind !== 'drums';
+  /** with scale lock on, notes land on the nearest pitch of the scale */
+  const fitScale = (pitch: number) => {
+    if (!scaleOn || !prefs.lock || inScale(pitch, prefs.root, prefs.scale)) return pitch;
+    for (let d = 1; d < 12; d++) {
+      if (inScale(pitch - d, prefs.root, prefs.scale)) return pitch - d;
+      if (inScale(pitch + d, prefs.root, prefs.scale)) return pitch + d;
+    }
+    return pitch;
+  };
+  // other channels in this pattern, drawn faintly behind the notes
+  const ghosts = prefs.ghosts && track.kind !== 'drums' ? channels.filter((c) => c.id !== track.id && c.kind === 'instrument').flatMap((c) => (pattern.notes[c.id] ?? []).map((n) => ({ ...n, color: c.color }))) : [];
   const drums = track.kind === 'drums';
   const [ppb, setPpb] = useState(() => (len <= 4 ? 120 : len <= 8 ? 72 : 44));
   const [snap, setSnap] = useState(0.25);
@@ -199,7 +221,7 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
     // create a note and keep dragging it
     const start = snapB(beat);
     if (start >= len) return;
-    const n: Note = { id: uid(), pitch: rows[row], start, dur: Math.min(noteLen, len - start), vel: 0.8 };
+    const n: Note = { id: uid(), pitch: drums ? rows[row] : fitScale(rows[row]), start, dur: Math.min(noteLen, len - start), vel: 0.8 };
     s.checkpoint();
     setNotes((ns) => [...ns, n], false);
     select([n.id]);
@@ -247,7 +269,8 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
       const shift = newStart - anchor.start;
       const dRows = Math.round(dyPx / ROW_H);
       const map = new Map(d.orig.map((n) => [n.id, n]));
-      const newAnchorPitch = rows[Math.max(0, Math.min(rows.length - 1, rowOf(anchor.pitch) + dRows))];
+      const rawAnchor = rows[Math.max(0, Math.min(rows.length - 1, rowOf(anchor.pitch) + dRows))];
+      const newAnchorPitch = drums ? rawAnchor : fitScale(rawAnchor);
       if (newAnchorPitch !== d.lastPitch) {
         d.lastPitch = newAnchorPitch;
         audition(track.id, newAnchorPitch);
@@ -258,7 +281,7 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
             const o = map.get(n.id);
             if (!o) return n;
             const r = Math.max(0, Math.min(rows.length - 1, rowOf(o.pitch) + dRows));
-            return { ...n, start: Math.max(0, Math.min(len - 0.0625, o.start + shift)), pitch: rows[r] };
+            return { ...n, start: Math.max(0, Math.min(len - 0.0625, o.start + shift)), pitch: drums ? rows[r] : fitScale(rows[r]) };
           }),
         false,
       );
@@ -405,6 +428,46 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
         >
           <Eraser /> Clear
         </button>
+        {!drums && (
+          <div className="pr-scale" data-hint="Highlight a key's notes so wrong notes stand out">
+            <select className="select" value={prefs.root} onChange={(e) => prefs.set({ root: Number(e.target.value) })} aria-label="Key" disabled={prefs.scale === 'off'}>
+              {NOTE_NAMES.map((nm, i) => (
+                <option key={nm} value={i}>
+                  {nm}
+                </option>
+              ))}
+            </select>
+            <select className="select" value={prefs.scale} onChange={(e) => prefs.set({ scale: e.target.value })} aria-label="Scale">
+              <option value="off">No scale</option>
+              {Object.entries(SCALES)
+                .filter(([k]) => k !== 'chromatic')
+                .map(([k, sc]) => (
+                  <option key={k} value={k}>
+                    {sc.label}
+                  </option>
+                ))}
+            </select>
+            <button
+              className={`btn sm icon ${prefs.lock ? 'on' : ''}`}
+              disabled={prefs.scale === 'off'}
+              onClick={() => prefs.set({ lock: !prefs.lock })}
+              data-hint="Scale lock: new and moved notes stay inside the scale"
+              aria-label="Scale lock"
+            >
+              <Lock />
+            </button>
+          </div>
+        )}
+        {!drums && (
+          <button
+            className={`btn sm icon ${prefs.ghosts ? 'on' : ''}`}
+            onClick={() => prefs.set({ ghosts: !prefs.ghosts })}
+            data-hint="Ghost notes: see the other channels of this pattern faintly behind yours"
+            aria-label="Ghost notes"
+          >
+            <Ghost />
+          </button>
+        )}
         <div className="spacer" />
         <span className="faint pr-help">
           {drums ? 'Click or drag to paint steps · click a step to erase' : 'Click to draw · drag to move · edge to resize · Shift-drag to select · Del to delete'}
@@ -429,7 +492,7 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
             {rows.map((m) => (
               <div
                 key={m}
-                className={`pr-key ${drums ? 'drum' : isBlack(m) ? 'black' : 'white'} ${pitchClass(m) === 0 ? 'c' : ''}`}
+                className={`pr-key ${drums ? 'drum' : isBlack(m) ? 'black' : 'white'} ${pitchClass(m) === 0 ? 'c' : ''} ${scaleOn && inScale(m, prefs.root, prefs.scale) ? 'in-scale' : ''} ${scaleOn && pitchClass(m - prefs.root) === 0 ? 'root' : ''}`}
                 style={{ height: ROW_H }}
                 onPointerDown={() => audition(track.id, m)}
               >
@@ -460,8 +523,27 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
           >
             {!drums &&
               rows.map((m, i) =>
-                isBlack(m) ? <div key={m} className="pr-rowbg" style={{ top: i * ROW_H, height: ROW_H }} /> : null,
+                scaleOn ? (
+                  !inScale(m, prefs.root, prefs.scale) ? (
+                    <div key={m} className="pr-rowbg off-scale" style={{ top: i * ROW_H, height: ROW_H }} />
+                  ) : pitchClass(m - prefs.root) === 0 ? (
+                    <div key={m} className="pr-rowbg root" style={{ top: i * ROW_H, height: ROW_H }} />
+                  ) : null
+                ) : isBlack(m) ? (
+                  <div key={m} className="pr-rowbg" style={{ top: i * ROW_H, height: ROW_H }} />
+                ) : null,
               )}
+            {ghosts.map((n) => {
+              const r = rowOf(n.pitch);
+              if (r < 0 || n.start >= len) return null;
+              return (
+                <div
+                  key={`g${n.id}`}
+                  className="pr-ghost"
+                  style={{ left: n.start * ppb, top: r * ROW_H + 2, width: Math.max(4, n.dur * ppb - 1), height: ROW_H - 4, ['--clip' as string]: n.color }}
+                />
+              );
+            })}
             {notes.map((n) => {
               const r = rowOf(n.pitch);
               if (r < 0) return null;

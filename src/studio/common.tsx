@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { create } from 'zustand';
 import { getBuffer, peaks, useBuffers } from './buffers';
-import type { AudioItem, Pattern } from './types';
+import type { AudioItem, AutomationItem, Pattern } from './types';
 import { groupedInstruments } from '../lib/instruments';
 
 export function InstrumentSelect({ value, onChange, kitsOnly }: { value: string; onChange: (id: string) => void; kitsOnly?: boolean }) {
@@ -50,6 +50,22 @@ export function PatternPreview({ pattern, length, color }: { pattern: Pattern; l
           );
         }),
       )}
+    </svg>
+  );
+}
+
+/** The automation curve, drawn across the clip. */
+export function AutomationPreview({ item }: { item: AutomationItem }) {
+  const pts = [...item.points].sort((a, b) => a.t - b.t);
+  if (!pts.length || item.length <= 0) return null;
+  const xy = pts.map((p) => `${(p.t / item.length) * 1000},${(1 - p.v) * 92 + 4}`);
+  const first = pts[0];
+  const last = pts[pts.length - 1];
+  const line = [`0,${(1 - first.v) * 92 + 4}`, ...xy, `1000,${(1 - last.v) * 92 + 4}`].join(' ');
+  return (
+    <svg className="clip-notes auto-curve" viewBox="0 0 1000 100" preserveAspectRatio="none">
+      <polygon points={`0,100 ${line} 1000,100`} fill="var(--clip)" opacity="0.18" />
+      <polyline points={line} fill="none" stroke="var(--clip)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

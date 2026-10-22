@@ -21,11 +21,12 @@ Drop a new folder into `Audio/` and re-run to add an instrument, then `npm run c
   glissando, chord mode), guitar/bass/violin necks (real fret spacing, tunings, chord strum), drum kit + pad grid,
   flute with live fingering chart + pan flute, marimba-style mallets. Computer keyboard, mouse/touch and Web MIDI
   (incl. sustain pedal). "Take" recorder sends what you played to the studio as a new track.
-- **Studio** — transport with count-in, metronome, loop region, tempo/time signature; tracks for instruments, drums and
-  audio/vocals; clips you can move, copy (Alt-drag), trim, split, duplicate; piano roll with velocity lane, marquee
-  select, quantize; drum step grid; mic recording with latency correction; audio import (drop a file on an audio lane);
-  mixer with EQ, compressor, reverb/delay sends, pan, mute/solo, meters; undo/redo; export the song to WAV; save/open
-  session files. Sessions autosave in the browser, recorded audio lives in IndexedDB.
+- **Studio** (FL Studio-style) — PAT/SONG modes, channel rack step sequencer with step velocity and swing,
+  patterns, playlist with pattern, audio and automation clips, piano roll with scale highlight / scale lock and ghost
+  notes, mixer with EQ, compressor, sends and up to any number of insert effects per channel (filter, distortion,
+  bitcrusher, chorus, phaser, tremolo, ping-pong delay, reverb, stereo width, limiter), automation of volume, pan,
+  sends and filter cutoff (plus master fades), mic recording, audio and MIDI import, export to WAV / MP3 / zipped stems
+  (rendered offline, faster than real time) and MIDI, autosaved projects list and session files that carry recordings.
 - **Settings** — 8 theme presets plus every colour editable (with contrast checks), 8 UI fonts + 3 mono fonts, scale,
   radius, density, background texture; per-instrument designs (keyboard case/keys/felt/finish, fretboard wood/inlays/
   strings, drum shells/heads/cymbals, flute material, mallet bars) with playable previews; theme export/import.

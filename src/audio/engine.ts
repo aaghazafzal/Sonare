@@ -8,6 +8,7 @@ import {
   sampleUrl,
   DRUM_PIECES,
 } from '../lib/instruments';
+import { createFx, type FxInstance, type FxSlot } from './fx';
 
 // A short look-ahead keeps on-screen playing tight while still scheduling transport events reliably.
 Tone.setContext(new Tone.Context({ latencyHint: 'interactive', lookAhead: 0.04 }));
@@ -18,7 +19,11 @@ export async function ensureAudio() {
 
 /* ---------------------------------------------------------------- master bus */
 
-export const master = (() => {
+/**
+ * Master section plus the shared reverb / delay buses. Built once for live playback and again inside
+ * an offline context when the studio renders a song.
+ */
+export function createBus(destination: Tone.InputNode = Tone.getDestination()) {
   // General-MIDI style samples are mastered quietly; make up ~8 dB before the bus compressor
   const input = new Tone.Gain(2.5);
   const volume = new Tone.Volume(-4);
@@ -34,20 +39,31 @@ export const master = (() => {
   const delay = new Tone.FeedbackDelay({ delayTime: '8n', feedback: 0.3, wet: 1 });
   const delayTone = new Tone.Filter({ type: 'bandpass', frequency: 1800, Q: 0.4 });
 
-  input.chain(volume, comp, limiter, Tone.getDestination());
+  input.chain(volume, comp, limiter, destination);
   limiter.connect(meter);
   limiter.connect(recorderTap);
   reverbIn.chain(reverb, reverbTone, input);
   delayIn.chain(delay, delayTone, input);
 
   return { input, volume, comp, limiter, meter, recorderTap, reverbIn, reverb, delayIn, delay };
-})();
+}
+export type Bus = ReturnType<typeof createBus>;
+
+export const master = createBus();
 
 export function setMasterVolume(db: number) {
   master.volume.volume.rampTo(db <= -60 ? -Infinity : db, 0.05);
 }
 
-/** Channel strip used by the live instrument and every studio track. */
+export type AutoParam = 'volume' | 'pan' | 'reverb' | 'delay' | 'cutoff';
+/** What automation needs from a Tone param or signal. */
+export interface Automatable {
+  setValueAtTime(value: number, time: number): unknown;
+  linearRampToValueAtTime(value: number, time: number): unknown;
+  cancelScheduledValues(time: number): unknown;
+}
+
+/** Channel strip used by the live instrument and every studio channel: EQ → comp → inserts → fader. */
 export class Strip {
   readonly input = new Tone.Gain(1);
   readonly eq = new Tone.EQ3({ low: 0, mid: 0, high: 0 });
@@ -57,15 +73,55 @@ export class Strip {
   readonly reverbSend = new Tone.Gain(0);
   readonly delaySend = new Tone.Gain(0);
   private compOn = false;
+  private inserts: FxInstance[] = [];
+  private insertSig = '';
 
-  constructor() {
+  constructor(bus: Bus = master) {
     this.input.chain(this.eq, this.channel);
-    this.channel.connect(master.input);
+    this.channel.connect(bus.input);
     this.channel.connect(this.meter);
     this.channel.connect(this.reverbSend);
     this.channel.connect(this.delaySend);
-    this.reverbSend.connect(master.reverbIn);
-    this.delaySend.connect(master.delayIn);
+    this.reverbSend.connect(bus.reverbIn);
+    this.delaySend.connect(bus.delayIn);
+  }
+
+  private rewire() {
+    this.eq.disconnect();
+    this.comp.disconnect();
+    this.inserts.forEach((f) => f.node.disconnect());
+    const chain: Tone.ToneAudioNode[] = [this.eq];
+    if (this.compOn) chain.push(this.comp);
+    chain.push(...this.inserts.map((f) => f.node), this.channel);
+    for (let i = 0; i < chain.length - 1; i++) chain[i].connect(chain[i + 1]);
+  }
+
+  private setInserts(slots: FxSlot[]) {
+    const active = slots.filter((s) => s.on);
+    const sig = active.map((s) => `${s.id}:${s.type}`).join('|');
+    if (sig !== this.insertSig) {
+      this.inserts.forEach((f) => f.dispose());
+      this.inserts = active.map((s) => createFx(s));
+      this.insertSig = sig;
+      this.rewire();
+    }
+    active.forEach((s, i) => this.inserts[i].apply(s));
+  }
+
+  /** The audio parameter an automation clip drives. */
+  param(name: AutoParam): Automatable | null {
+    switch (name) {
+      case 'volume':
+        return this.channel.volume;
+      case 'pan':
+        return this.channel.pan;
+      case 'reverb':
+        return this.reverbSend.gain;
+      case 'delay':
+        return this.delaySend.gain;
+      case 'cutoff':
+        return this.inserts.find((f) => f.cutoff)?.cutoff ?? null;
+    }
   }
 
   set({
@@ -76,6 +132,7 @@ export class Strip {
     delay,
     eq,
     comp,
+    fx,
   }: {
     volume?: number;
     pan?: number;
@@ -84,6 +141,7 @@ export class Strip {
     delay?: number;
     eq?: { low: number; mid: number; high: number };
     comp?: boolean;
+    fx?: FxSlot[];
   }) {
     if (volume !== undefined) this.channel.volume.rampTo(volume <= -60 ? -Infinity : volume, 0.04);
     if (pan !== undefined) this.channel.pan.rampTo(pan, 0.04);
@@ -97,14 +155,13 @@ export class Strip {
     }
     if (comp !== undefined && comp !== this.compOn) {
       this.compOn = comp;
-      this.eq.disconnect();
-      this.comp.disconnect();
-      if (comp) this.eq.chain(this.comp, this.channel);
-      else this.eq.connect(this.channel);
+      this.rewire();
     }
+    if (fx) this.setInserts(fx);
   }
 
   dispose() {
+    this.inserts.forEach((f) => f.dispose());
     [this.input, this.eq, this.comp, this.channel, this.meter, this.reverbSend, this.delaySend].forEach((n) => n.dispose());
   }
 }
@@ -219,6 +276,10 @@ export class Voice {
   private token = 0;
   ready: Promise<void> = Promise.resolve();
 
+  // remembered so offline renders (whose events fire after Tone switches back to the live context)
+  // still build their nodes in the right context
+  private readonly ctx = Tone.getContext();
+
   constructor(private out: Tone.InputNode, id?: string) {
     if (id) this.setInstrument(id);
   }
@@ -245,7 +306,7 @@ export class Voice {
       } else {
         const urls: Record<number, Tone.ToneAudioBuffer> = {};
         for (const [k, b] of Object.entries(buffers)) urls[Number(k)] = b;
-        this.sampler = new Tone.Sampler({ urls, release: releaseFor(id), attack: 0.002 });
+        this.sampler = new Tone.Sampler({ urls, release: releaseFor(id), attack: 0.002, context: this.ctx });
         this.sampler.connect(this.out);
       }
     });
@@ -262,7 +323,7 @@ export class Voice {
       this.openHats.forEach((s) => s.stop(time + 0.01));
       this.openHats.clear();
     }
-    const src = new Tone.ToneBufferSource(buf).connect(this.out);
+    const src = new Tone.ToneBufferSource({ url: buf, context: this.ctx }).connect(this.out);
     src.start(time, 0, undefined, Math.max(0.05, Math.min(1, vel)));
     if (piece.key === 'hihat-open') {
       this.openHats.add(src);

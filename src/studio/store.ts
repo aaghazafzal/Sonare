@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AudioItem, Lane, Note, Pattern, PatternItem, PlaylistItem, Project, Track, TrackKind } from './types';
+import type { AudioItem, AutomationItem, Lane, Note, Pattern, PatternItem, PlaylistItem, Project, Track, TrackKind } from './types';
+import type { AutoParam } from '../audio/engine';
+import { autoNormal } from './automation';
+import { defaultSlot } from '../audio/fx';
 import { PATTERN_COLORS, TRACK_COLORS } from './types';
 import { displayName, isKitId } from '../lib/instruments';
 import { presetById, type PresetDef } from './presets';
@@ -506,4 +509,38 @@ export function splitAudioItem(it: AudioItem, at: number, bpm: number): [AudioIt
 
 export function patternNotesFlat(pt: Pattern): Note[] {
   return Object.values(pt.notes).flat();
+}
+
+/** A new automation clip for a channel (or 'master') parameter, starting flat at its current setting. */
+export function addAutomation(p: Project, channelId: string, param: AutoParam, start: number, length = 16): [Project, AutomationItem] {
+  let next = p;
+  const t = next.tracks.find((x) => x.id === channelId);
+  // automating the cutoff needs a filter on the channel
+  if (param === 'cutoff' && t && !t.fx?.some((f) => f.type === 'filter')) {
+    next = mapTrack(next, t.id, (tr) => ({ ...tr, fx: [defaultSlot('filter', uid()), ...(tr.fx ?? [])] }));
+  }
+  const tr = next.tracks.find((x) => x.id === channelId);
+  let v = 0.8;
+  if (channelId === 'master') v = autoNormal('volume', next.master);
+  else if (tr) {
+    if (param === 'volume') v = autoNormal('volume', tr.volume);
+    else if (param === 'pan') v = autoNormal('pan', tr.pan);
+    else if (param === 'reverb') v = tr.reverb;
+    else if (param === 'delay') v = tr.delay;
+    else v = autoNormal('cutoff', tr.fx?.find((f) => f.type === 'filter')?.params.cutoff ?? 8000);
+  }
+  const lane = freeLane(next, start, start + length);
+  const item: AutomationItem = {
+    id: uid(),
+    kind: 'automation',
+    lane,
+    start,
+    length,
+    target: { channelId, param: channelId === 'master' ? 'volume' : param },
+    points: [
+      { t: 0, v },
+      { t: length, v },
+    ],
+  };
+  return [ensureLanes({ ...next, playlist: [...next.playlist, item], mode: 'song' }, lane), item];
 }

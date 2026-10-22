@@ -15,8 +15,10 @@ import {
 } from './store';
 import { currentBeat, importAudioFile, seek } from './playback';
 import type { PlaylistItem, Project } from './types';
-import { PatternPreview, Waveform, DRAG_MIME, readDrag } from './common';
+import { PatternPreview, Waveform, AutomationPreview, DRAG_MIME, readDrag } from './common';
+import { AUTO_PARAMS } from './automation';
 import { presetById } from './presets';
+import { importMidi } from './midi';
 import { useMobile, useMobileStore } from '../lib/useMobile';
 import { createLongPress, menuPosition } from '../lib/longPress';
 
@@ -103,7 +105,8 @@ export function Playlist() {
       setClipMenu({ x, y, id: it.id });
     });
     if (it.kind === 'pattern') s.edit((pr) => ({ ...pr, currentPatternId: it.patternId }), false);
-    else s.setUi({ selectedTrackId: it.channelId });
+    else if (it.kind === 'audio') s.setUi({ selectedTrackId: it.channelId });
+    else if (it.target.channelId !== 'master') s.setUi({ selectedTrackId: it.target.channelId });
   };
 
   const onItemMove = (e: React.PointerEvent) => {
@@ -177,7 +180,8 @@ export function Playlist() {
     const start = snapDown(beatAt(e.clientX, e.currentTarget), s.snap || p.beatsPerBar);
     const f = e.dataTransfer.files?.[0];
     if (f) {
-      void importAudioFile(f, { start, lane });
+      if (/\.midi?$/i.test(f.name)) void importMidi(f, { start, lane }).catch(() => alert('That MIDI file could not be read.'));
+      else void importAudioFile(f, { start, lane });
       return;
     }
     const payload = readDrag(e);
@@ -346,9 +350,16 @@ export function Playlist() {
                   .filter((it) => it.lane === i)
                   .map((it) => {
                     const pat = it.kind === 'pattern' ? patternsById.get(it.patternId) : null;
-                    const ch = it.kind === 'audio' ? p.tracks.find((t) => t.id === it.channelId) : null;
-                    const color = pat?.color ?? ch?.color ?? '#888';
-                    const name = pat?.name ?? (it.kind === 'audio' ? it.name : '?');
+                    const chId = it.kind === 'audio' ? it.channelId : it.kind === 'automation' ? it.target.channelId : null;
+                    const ch = chId ? p.tracks.find((t) => t.id === chId) : null;
+                    const color = pat?.color ?? ch?.color ?? (it.kind === 'automation' ? 'var(--primary)' : '#888');
+                    const name =
+                      pat?.name ??
+                      (it.kind === 'audio'
+                        ? it.name
+                        : it.kind === 'automation'
+                          ? `${AUTO_PARAMS.find((a) => a.id === it.target.param)?.label ?? 'Automation'} · ${ch?.name ?? 'Master'}`
+                          : '?');
                     return (
                       <div
                         key={it.id}
@@ -359,7 +370,7 @@ export function Playlist() {
                         onPointerUp={onItemUp}
                         onDoubleClick={(e) => {
                           e.stopPropagation();
-                          s.setUi({ dock: it.kind === 'pattern' ? 'rack' : 'roll', dockOpen: true });
+                          s.setUi({ dock: it.kind === 'pattern' ? 'rack' : 'roll', dockOpen: true, selectedItemId: it.id });
                         }}
                         onContextMenu={(e) => {
                           e.preventDefault();
@@ -369,7 +380,13 @@ export function Playlist() {
                             if (!clipMenu) setClipMenu({ x: e.clientX, y: e.clientY, id: it.id });
                           } else removeItem(it.id);
                         }}
-                        data-hint={it.kind === 'pattern' ? `${name} — double-click to edit, right-click to delete` : `${name} — audio clip, right-click to delete`}
+                        data-hint={
+                          it.kind === 'pattern'
+                            ? `${name} — double-click to edit, right-click to delete`
+                            : it.kind === 'automation'
+                              ? `${name} automation — double-click to draw the curve, right-click to delete`
+                              : `${name} — audio clip, right-click to delete`
+                        }
                       >
                         <div className="clip-head">
                           <span>{name}</span>
@@ -379,6 +396,8 @@ export function Playlist() {
                             <PatternPreview pattern={pat} length={it.length} color={color} />
                           ) : it.kind === 'audio' ? (
                             <Waveform item={it} bpm={p.bpm} width={it.length * ppb} height={ROW - 22} color={color} />
+                          ) : it.kind === 'automation' ? (
+                            <AutomationPreview item={it} />
                           ) : null}
                         </div>
                       </div>
@@ -450,6 +469,11 @@ function ClipMenu({ at, onClose, onDelete }: { at: { x: number; y: number; id: s
       >
         <Copy /> Duplicate after
       </button>
+      {it.kind === 'automation' && (
+        <button onClick={act(() => s.setUi({ dock: 'roll', dockOpen: true, selectedItemId: it.id }))}>
+          <Music2 /> Edit curve
+        </button>
+      )}
       {it.kind === 'pattern' && (
         <>
           <button onClick={act(() => s.setUi({ dock: 'rack', dockOpen: true }))}>

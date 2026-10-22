@@ -28,11 +28,16 @@ installMobileDetection();
 
 if (import.meta.env.DEV) {
   // handles for poking at the running app from the devtools console
-  void Promise.all([import('./studio/store'), import('./studio/playback'), import('./audio/engine'), import('./audio/live')]).then(
-    ([store, playback, engine, live]) => {
-      (window as unknown as Record<string, unknown>).__sonare = { store, playback, engine, live };
-    },
-  );
+  void Promise.all([
+    import('./studio/store'),
+    import('./studio/playback'),
+    import('./audio/engine'),
+    import('./audio/live'),
+    import('./studio/midi'),
+    import('./studio/render'),
+  ]).then(([store, playback, engine, live, midi, render]) => {
+    (window as unknown as Record<string, unknown>).__sonare = { store, playback, engine, live, midi, render };
+  });
 }
 
 createRoot(document.getElementById('root')!).render(

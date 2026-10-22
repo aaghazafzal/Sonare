@@ -963,3 +963,281 @@
 :root[data-mobile] .fl-save .lbl {
   display: none;
 }
+
+/* ----------------------------------------------------- step velocity */
+
+.cr-step.on::before {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--clip) 80%, white) 0,
+    var(--clip) var(--v),
+    color-mix(in srgb, var(--clip) 28%, var(--panel)) var(--v)
+  );
+}
+.cr-steps-wrap.vel-mode .cr-step {
+  cursor: ns-resize;
+}
+.cr-steps-wrap.vel-mode .cr-step:not(.on)::before {
+  opacity: 0.55;
+}
+
+/* ---------------------------------------------- piano roll: scale, ghosts */
+
+.pr-scale {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pr-scale .select:first-child {
+  width: 64px;
+}
+.pr-rowbg.off-scale {
+  background: rgb(var(--bg-rgb) / 0.7);
+}
+.pr-rowbg.root {
+  background: rgb(var(--primary-rgb) / 0.08);
+}
+.pr-key.in-scale::after {
+  content: '';
+  width: 4px;
+  height: 4px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0.6;
+}
+.pr-key.root {
+  color: var(--primary);
+}
+.pr-ghost {
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--clip) 70%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--clip) 14%, transparent);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------- insert effects */
+
+.mx-fx {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--inset);
+  color: var(--text);
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+.mx-fx span {
+  padding: 2px 4px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--clip) 22%, var(--panel));
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mx-fx span.off {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.mx-fx span.faint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+}
+.mx-fx.on,
+.mx-fx:hover {
+  border-color: var(--primary);
+}
+.fx-rack {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 340px;
+  padding: 10px;
+  overflow: auto;
+  background: var(--panel-alt);
+  border-left: 1px solid var(--border-strong);
+}
+.fx-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fx-head svg {
+  color: var(--primary);
+}
+.fx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fx-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--clip);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.fx-slot.off {
+  opacity: 0.6;
+}
+.fx-slot-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+}
+.fx-knobs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+}
+.fx-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fx-choice .select {
+  height: 26px;
+  font-size: 0.76rem;
+}
+
+/* ---------------------------------------------------------- automation */
+
+.ae {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.ae-title {
+  font-size: 0.84rem;
+}
+.ae-readout {
+  min-width: 150px;
+  font-size: 0.76rem;
+}
+.ae-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 14px;
+  background: var(--inset);
+}
+.ae-graph {
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+  background: color-mix(in srgb, var(--panel) 60%, var(--inset));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.ae-bar {
+  stroke: rgb(var(--text-rgb) / 0.16);
+}
+.ae-beat {
+  stroke: rgb(var(--text-rgb) / 0.06);
+}
+.ae-fill {
+  fill: var(--clip);
+  opacity: 0.12;
+}
+.ae-line {
+  fill: none;
+  stroke: var(--clip);
+  stroke-width: 2;
+}
+.ae-point {
+  fill: var(--panel);
+  stroke: var(--clip);
+  stroke-width: 2;
+  cursor: grab;
+}
+.ae-point.on {
+  fill: var(--clip);
+}
+.ae-play {
+  stroke: var(--primary);
+  stroke-width: 1;
+}
+.clip.automation {
+  background: color-mix(in srgb, var(--clip) 10%, var(--panel));
+}
+
+.menu-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 8px 8px;
+}
+.menu .menu-chips .btn {
+  width: auto;
+  padding: 0 8px;
+  font-size: 0.76rem;
+}
+
+/* -------------------------------------------------------------- export */
+
+.export {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.export-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.export-row .seg {
+  flex-wrap: wrap;
+  align-self: flex-start;
+}
+.export-note {
+  font-size: 0.82rem;
+}
+.export-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.export-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--inset);
+}
+.export-bar i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.2s;
+}
+
+:root[data-mobile] .fx-rack {
+  position: fixed;
+  inset: auto 0 calc(var(--nav-h) + var(--safe-b)) 0;
+  z-index: 70;
+  width: auto;
+  max-height: 60dvh;
+  border-left: 0;
+  border-top: 1px solid var(--border-strong);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -12px 40px -16px rgb(0 0 0 / 0.6);
+}
+:root[data-mobile] .pr-scale .select {
+  width: 96px;
+}
