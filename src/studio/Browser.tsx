@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Drum, FileAudio, FolderOpen, LayoutTemplate, Music, Piano, Search, X } from 'lucide-react';
 import { useStudio, applyPreset, addChannel, channelKind, freeLane, fromTemplate, TEMPLATE_LIST } from './store';
 import { importAudioFile } from './playback';
+import { startProject } from './projects';
 import { PRESETS, PRESET_CATEGORIES } from './presets';
 import { DRAG_MIME, type DragPayload } from './common';
 import { groupedInstruments } from '../lib/instruments';
@@ -83,10 +84,9 @@ export function Browser({ onClose }: { onClose?: () => void }) {
               key={t.id}
               className="br-item"
               onClick={() => {
-                if (confirm(`Start a new “${t.name}” session? The current one stays in your browser until you replace it — save it first from File if you want to keep it.`))
-                  s.loadProject(fromTemplate(t.id));
+                void startProject(fromTemplate(t.id));
               }}
-              data-hint={t.hint}
+              data-hint={`${t.hint} — opens as a new project; the current one stays in My projects`}
             >
               <span>{t.name}</span>
               <small>{t.hint}</small>

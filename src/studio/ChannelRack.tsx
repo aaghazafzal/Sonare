@@ -21,6 +21,7 @@ import { DRUM_PIECES, displayName } from '../lib/instruments';
 import { InstrumentBrowser } from '../components/PlayParts';
 import { Knob } from '../components/ui';
 import { useMobile } from '../lib/useMobile';
+import { createLongPress, menuPosition } from '../lib/longPress';
 
 // drum-machine order, most used first
 const PIECE_ORDER = ['bass', 'snare-drum', 'snare-stick', 'hihat', 'hihat-open', 'hihat-foot', 'crash', 'ride', 'tom1', 'tom2', 'floor-tom'];
@@ -53,6 +54,7 @@ export function ChannelRack() {
   const [dropHot, setDropHot] = useState(false);
   const playRef = useRef<HTMLDivElement>(null);
   const paint = useRef<{ on: boolean; last: string } | null>(null);
+  const namePress = useRef(createLongPress()).current;
 
   // step playhead
   useEffect(() => {
@@ -206,12 +208,16 @@ export function ChannelRack() {
           className="cr-name"
           style={{ ['--clip' as string]: ch.color }}
           onClick={() => s.setUi({ selectedTrackId: ch.id })}
+          onPointerDown={(e) => namePress.down(e, (x, y) => setMenu({ x, y, id: ch.id }))}
+          onPointerMove={(e) => namePress.move(e)}
+          onPointerUp={() => namePress.up()}
+          onPointerCancel={() => namePress.up()}
           onDoubleClick={() => s.setUi({ selectedTrackId: ch.id, dock: ch.kind === 'audio' ? 'mixer' : 'roll', dockOpen: true })}
           onContextMenu={(e) => {
             e.preventDefault();
             setMenu({ x: e.clientX, y: e.clientY, id: ch.id });
           }}
-          data-hint={`${ch.name} (${ch.kind === 'audio' ? 'audio input' : displayName(ch.instrumentId)}) — click to select and play it, double-click for the piano roll, right-click for options`}
+          data-hint={`${ch.name} (${ch.kind === 'audio' ? 'audio input' : displayName(ch.instrumentId)}) — click to select and play it, double-click for the piano roll, right-click or press and hold for options`}
         >
           {ch.kind === 'audio' && <Mic size={11} />}
           <span>{ch.name}</span>
@@ -448,7 +454,7 @@ export function ChannelRack() {
       </div>
 
       {menu && menuCh && (
-        <div className="menu ctx" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
+        <div className="menu ctx" style={menuPosition(menu.x, menu.y, 260, 260)} onPointerDown={(e) => e.stopPropagation()}>
           <button
             onClick={() => {
               const name = prompt('Channel name', menuCh.name);

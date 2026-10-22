@@ -42,11 +42,18 @@ function samples(): Plugin {
         ...manifest.instruments.flatMap((i) => Object.values(i.samples).map((f) => [i.folder, f])),
         ...manifest.kits.flatMap((k) => Object.values(k.pieces).map((f) => [k.folder, f])),
       ];
-      for (const [folder, f] of files) {
+      // Ogg samples also ship their AAC copy (made by scripts/convert-ogg.mjs) for Safari / iOS
+      const withAac = files.flatMap(([folder, f]) => {
+        const aac = f.replace(/\.ogg$/, '.m4a');
+        return f.endsWith('.ogg') && fs.existsSync(path.join(AUDIO_DIR, folder, aac)) ? [[folder, f], [folder, aac]] : [[folder, f]];
+      });
+      for (const [folder, f] of withAac) {
         const dest = path.join(outDir, 'audio', folder, f);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.copyFileSync(path.join(AUDIO_DIR, folder, f), dest);
       }
+      files.length = 0;
+      files.push(...withAac);
       this.info?.(`copied ${files.length} samples to ${path.relative(process.cwd(), path.join(outDir, 'audio'))}`);
     },
   };

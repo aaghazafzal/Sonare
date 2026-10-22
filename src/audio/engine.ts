@@ -112,6 +112,14 @@ export class Strip {
 /* ------------------------------------------------------------- sample cache */
 
 type BufferMap = Record<string, Tone.ToneAudioBuffer>;
+
+const canPlayOgg = (() => {
+  try {
+    return typeof Audio !== 'undefined' && new Audio().canPlayType('audio/ogg; codecs="vorbis"') !== '';
+  } catch {
+    return false;
+  }
+})();
 const bufferCache = new Map<string, Promise<BufferMap>>();
 
 interface LoadingState {
@@ -150,11 +158,19 @@ export function loadBuffers(id: string): Promise<BufferMap> {
   trackLoad(id, 1);
   const p = Promise.all(
     entries.map(async ([key, file]) => {
+      // Safari / iOS can't decode Ogg Vorbis: use the AAC copy made by scripts/convert-ogg.mjs
+      const isOgg = file.endsWith('.ogg');
+      const aac = file.replace(/\.ogg$/, '.m4a');
+      const first = isOgg && !canPlayOgg ? aac : file;
       try {
-        const buf = await Tone.ToneAudioBuffer.fromUrl(sampleUrl(folder, file));
-        return [key, buf] as const;
+        return [key, await Tone.ToneAudioBuffer.fromUrl(sampleUrl(folder, first))] as const;
       } catch {
-        return null;
+        if (!isOgg) return null;
+        try {
+          return [key, await Tone.ToneAudioBuffer.fromUrl(sampleUrl(folder, first === aac ? file : aac))] as const;
+        } catch {
+          return null;
+        }
       }
     }),
   ).then((res) => {

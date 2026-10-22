@@ -123,3 +123,16 @@ export function download(blob: Blob, filename: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
+
+/** Raw stored audio, for putting recordings inside saved session files. */
+export function readAudioBlob(id: string) {
+  return get<Blob>(`audio:${id}`);
+}
+
+/** Store audio under a known id (used when opening a session file that carries its recordings). */
+export async function writeAudioBlob(id: string, blob: Blob) {
+  await set(`audio:${id}`, blob);
+  memory.delete(id);
+  peaksCache.delete(id);
+  loading.delete(id);
+}

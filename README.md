@@ -12,8 +12,8 @@ npm run build      # static site in dist/ (deploy to any static host)
 
 `npm run dev` / `build` first runs `scripts/build-manifest.mjs`, which scans `Audio/` and writes `src/data/manifest.json`
 (instrument family, play surface, note → sample file). The `sonare-samples` plugin in `vite.config.ts` serves `Audio/`
-at `/audio/...` in dev and copies only the samples the manifest uses into `dist/audio` on build (~119 MB of the 243 MB).
-Drop a new folder into `Audio/` and re-run to add an instrument. Deployment: see [DEPLOY.md](DEPLOY.md).
+at `/audio/...` in dev and copies only the samples the manifest uses (plus their `.m4a` copies) into `dist/audio` on build (~200 MB).
+Drop a new folder into `Audio/` and re-run to add an instrument, then `npm run convert-samples` (needs ffmpeg) to make the `.m4a` copies Safari/iOS use instead of `.ogg`. Deployment: see [DEPLOY.md](DEPLOY.md).
 
 ## What's in it
 

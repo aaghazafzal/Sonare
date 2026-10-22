@@ -8,6 +8,7 @@ import { installKeyboardInput } from './audio/input';
 import { ensureAudio, master, useLoading } from './audio/engine';
 import { FullscreenButton, LevelMeter } from './components/ui';
 import { installUiSounds } from './audio/uiSounds';
+import { installAutosave } from './studio/projects';
 import { useStudio } from './studio/store';
 import * as Tone from 'tone';
 
@@ -66,6 +67,7 @@ export default function App() {
   useEffect(() => applySettings(settings), [settings]);
   useEffect(() => installKeyboardInput(), []);
   useEffect(() => installUiSounds(), []);
+  useEffect(() => installAutosave(), []);
   useEffect(() => {
     const on = () => setRoute(routeFromHash());
     window.addEventListener('hashchange', on);

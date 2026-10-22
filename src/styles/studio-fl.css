@@ -854,3 +854,112 @@
   padding: 0 5px;
   font-size: 0.74rem;
 }
+
+/* --------------------------------------------------------------- projects */
+
+.fl-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+.fl-save svg {
+  width: 13px;
+  height: 13px;
+}
+.fl-save.saved svg {
+  color: var(--success);
+}
+.fl-save.error {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.fl-save:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.proj {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.proj-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.proj-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-alt);
+}
+.proj-list li.on {
+  border-color: rgb(var(--primary-rgb) / 0.6);
+}
+.proj-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.proj-main:hover {
+  background: var(--panel);
+}
+.proj-main b {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.proj-main small {
+  font-size: 0.74rem;
+}
+.proj-rename {
+  flex: 1;
+  margin: 4px;
+}
+.proj-open {
+  color: var(--primary);
+  border-color: rgb(var(--primary-rgb) / 0.5);
+}
+.btn.danger-ghost:hover {
+  color: var(--danger);
+}
+.proj-note {
+  font-size: 0.78rem;
+}
+
+/* long-press friendly: no iOS callout or text selection on things you press and hold */
+.clip,
+.cr-name,
+.pl-name {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+:root[data-mobile] .fl-save .lbl {
+  display: none;
+}

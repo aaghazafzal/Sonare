@@ -29,7 +29,7 @@ Iske baad har `git push` (main branch) pe Vercel apne aap naya deploy kar dega. 
 - **Studio**: Play dabao → demo beat bajni chahiye. Export WAV try karo.
 - **Vocal recording**: mic sirf HTTPS pe chalta hai — Vercel ka URL HTTPS hi hota hai, to theek hai. Browser mic permission maangega.
 - **MIDI keyboard**: Chrome / Edge me chalta hai. Safari aur Firefox me Web MIDI nahi hai.
-- **Safari (iPhone/Mac)**: zyada tar samples `.ogg` me hain, jo purane Safari versions nahi chala paate. Chrome/Edge/Firefox me sab chalega.
+- **Safari (iPhone/Mac)**: har `.ogg` sample ki ek `.m4a` (AAC) copy repo me hai. Jo browser Ogg nahi chala sakta, wo apne aap `.m4a` uthata hai.
 
 ## Kuch dhyan rakhne wali baatein
 
@@ -37,6 +37,20 @@ Iske baad har `git push` (main branch) pe Vercel apne aap naya deploy kar dega. 
   to normal testing ke liye kaafi hai. Audio files 1 saal ke liye cache hoti hain (`vercel.json` me header set hai).
 - Sessions aur recordings user ke apne browser me save hote hain (localStorage + IndexedDB), server pe kuch nahi jaata.
 - Public launch se pehle `Audio/` ke samples ka license confirm kar lena (bahut se sets CC-BY lagte hain, unme credit dena padta hai).
+
+## Naye samples add karne ke baad
+
+`Audio/` me naya instrument folder daalo, phir Safari ke liye AAC copies banao (ffmpeg chahiye) aur commit karo:
+
+```bash
+npm run manifest
+npm run convert-samples
+```
+
+## Projects aur backup
+
+Studio ke projects browser me apne aap save hote hain (File → My projects). Doosre device pe le jaane ke liye
+File → Save session file — recordings bhi usi file me hoti hain.
 
 ## Local me production build check karna
 

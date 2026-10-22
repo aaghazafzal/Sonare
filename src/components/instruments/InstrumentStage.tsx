@@ -396,7 +396,6 @@ export function InstrumentStage({
               leftHanded={settings.leftHanded}
               vertical={neckVertical}
               length={neckLength}
-              solidWood={!!mobile}
               onDown={(s, f) => {
                 setHeld((h) => ({ ...h, [`${s}:${f}`]: true }));
                 noteOn(tuning.strings[s] + f);

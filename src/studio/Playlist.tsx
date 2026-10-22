@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MousePointer2, Pencil, Plus, Sparkles } from 'lucide-react';
+import { Copy, Grid3x3, MousePointer2, Music2, Pencil, Plus, Sparkles, Split, Trash2 } from 'lucide-react';
 import {
   useStudio,
   mapItem,
@@ -11,12 +11,14 @@ import {
   applyPreset,
   addChannel,
   channelKind,
+  clonePattern,
 } from './store';
 import { currentBeat, importAudioFile, seek } from './playback';
 import type { PlaylistItem, Project } from './types';
 import { PatternPreview, Waveform, DRAG_MIME, readDrag } from './common';
 import { presetById } from './presets';
 import { useMobile, useMobileStore } from '../lib/useMobile';
+import { createLongPress, menuPosition } from '../lib/longPress';
 
 const HEAD_DESKTOP = 148;
 const HEAD_MOBILE = 72;
@@ -44,6 +46,9 @@ export function Playlist() {
   const importAt = useRef<{ start: number; lane: number } | null>(null);
   const [tool, setTool] = useState<'draw' | 'select'>('draw');
   const [renaming, setRenaming] = useState<number | null>(null);
+  const [clipMenu, setClipMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  const press = useRef(createLongPress()).current;
+  const lanePress = useRef(createLongPress()).current;
   const cur = currentPattern(p);
   const patternsById = new Map(p.patterns.map((x) => [x.id, x]));
 
@@ -79,22 +84,32 @@ export function Playlist() {
   const beatAt = (clientX: number, el: Element) => Math.max(0, (clientX - el.getBoundingClientRect().left) / ppb);
 
   const onItemDown = (e: React.PointerEvent, it: PlaylistItem) => {
+    press.track(e);
     if (e.button !== 0) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const rel = e.clientX - rect.left;
     const edge = mobile ? 12 : 7;
     const mode: DragMode = rel < edge ? 'left' : rel > rect.width - edge ? 'right' : 'move';
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      /* pointer already gone */
+    }
     drag.current = { mode, id: it.id, x0: e.clientX, orig: it, moved: false, copy: e.altKey || e.ctrlKey };
     s.setUi({ selectedItemId: it.id, selectedNotes: [] });
+    press.down(e, (x, y) => {
+      drag.current = null;
+      setClipMenu({ x, y, id: it.id });
+    });
     if (it.kind === 'pattern') s.edit((pr) => ({ ...pr, currentPatternId: it.patternId }), false);
     else s.setUi({ selectedTrackId: it.channelId });
   };
 
   const onItemMove = (e: React.PointerEvent) => {
+    press.move(e);
     const d = drag.current;
-    if (!d) return;
+    if (!d || press.fired) return;
     if (!d.moved && Math.abs(e.clientX - d.x0) < 3 && d.mode !== 'move') return;
     const dx = (e.clientX - d.x0) / ppb;
     const lane = laneAt(e.clientX, e.clientY);
@@ -130,6 +145,7 @@ export function Playlist() {
     }
   };
   const onItemUp = () => {
+    press.up();
     drag.current = null;
   };
 
@@ -297,7 +313,15 @@ export function Playlist() {
                     }}
                   />
                 ) : (
-                  <span className="pl-name" onDoubleClick={() => setRenaming(i)} data-hint="Double-click to rename">
+                  <span
+                    className="pl-name"
+                    onDoubleClick={() => setRenaming(i)}
+                    onPointerDown={(e) => lanePress.down(e, () => setRenaming(i))}
+                    onPointerMove={(e) => lanePress.move(e)}
+                    onPointerUp={() => lanePress.up()}
+                    onPointerCancel={() => lanePress.up()}
+                    data-hint="Double-click (or press and hold) to rename"
+                  >
                     {laneName(i)}
                   </span>
                 )}
@@ -340,7 +364,10 @@ export function Playlist() {
                         onContextMenu={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          removeItem(it.id);
+                          // a finger gets the menu (Android long-press); the mouse deletes, like FL Studio
+                          if (press.touch) {
+                            if (!clipMenu) setClipMenu({ x: e.clientX, y: e.clientY, id: it.id });
+                          } else removeItem(it.id);
                         }}
                         data-hint={it.kind === 'pattern' ? `${name} — double-click to edit, right-click to delete` : `${name} — audio clip, right-click to delete`}
                       >
@@ -378,6 +405,8 @@ export function Playlist() {
         )}
       </div>
 
+      {clipMenu && <ClipMenu at={clipMenu} onClose={() => setClipMenu(null)} onDelete={removeItem} />}
+
       <input
         ref={fileRef}
         type="file"
@@ -390,6 +419,62 @@ export function Playlist() {
           if (f && at) void importAudioFile(f, at);
         }}
       />
+    </div>
+  );
+}
+
+/** Clip options for touch screens (and anyone who long-presses). */
+function ClipMenu({ at, onClose, onDelete }: { at: { x: number; y: number; id: string }; onClose: () => void; onDelete: (id: string) => void }) {
+  const s = useStudio();
+  const it = s.project.playlist.find((x) => x.id === at.id);
+  useEffect(() => {
+    const close = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest('.clip-menu')) onClose();
+    };
+    window.addEventListener('pointerdown', close, true);
+    return () => window.removeEventListener('pointerdown', close, true);
+  }, [onClose]);
+  if (!it) return null;
+  const act = (fn: () => void) => () => {
+    fn();
+    onClose();
+  };
+  return (
+    <div className="menu ctx clip-menu" style={menuPosition(at.x, at.y)}>
+      <button
+        onClick={act(() => {
+          const c = cloneItem(it, it.start + it.length);
+          s.edit((pr) => ({ ...pr, playlist: [...pr.playlist, c] }));
+          s.setUi({ selectedItemId: c.id });
+        })}
+      >
+        <Copy /> Duplicate after
+      </button>
+      {it.kind === 'pattern' && (
+        <>
+          <button onClick={act(() => s.setUi({ dock: 'rack', dockOpen: true }))}>
+            <Grid3x3 /> Edit in channel rack
+          </button>
+          <button onClick={act(() => s.setUi({ dock: 'roll', dockOpen: true }))}>
+            <Music2 /> Edit in piano roll
+          </button>
+          <button
+            onClick={act(() =>
+              s.edit((pr) => {
+                const res = clonePattern(pr, it.patternId);
+                if (!res) return pr;
+                const [next, pat] = res;
+                return mapItem(next, it.id, (x) => (x.kind === 'pattern' ? { ...x, patternId: pat.id } : x));
+              }),
+            )}
+          >
+            <Split /> Make unique
+          </button>
+        </>
+      )}
+      <button className="danger" onClick={act(() => onDelete(it.id))}>
+        <Trash2 /> Delete
+      </button>
     </div>
   );
 }

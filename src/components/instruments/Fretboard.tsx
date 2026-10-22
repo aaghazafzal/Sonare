@@ -60,7 +60,7 @@ export function Fretboard({
   leftHanded: leftHandedPref,
   vertical = false,
   length = 1200,
-  solidWood = false,
+  solidWood = true,
 }: {
   strings: number[];
   frets: number;
@@ -206,7 +206,7 @@ export function Fretboard({
 
       {/* neck */}
       <rect x={openW} y={padY - 4} width={W - openW} height={neckH + 8} fill={skin.binding} rx="2" />
-      {/* phone necks get a solid wood base so the light binding can't show through the shading */}
+      {/* solid wood base so the light binding never shows through the shading */}
       {solidWood && <rect x={openW} y={padY - 1} width={W - openW} height={neckH + 2} fill={skin.wood} />}
       <rect x={openW} y={padY - 1} width={W - openW} height={neckH + 2} fill={`url(#${woodId})`} />
       <rect x={openW} y={padY - 1} width={W - openW} height={neckH + 2} fill="#000" filter={`url(#${grainId})`} />

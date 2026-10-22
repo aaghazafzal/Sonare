@@ -35,7 +35,8 @@ import {
   type DockTab,
 } from './store';
 import { bounce, currentBeat, pause, play, record, seek, stop, setMode } from './playback';
-import { download } from './buffers';
+import { exportSessionFile, importSessionFile, startProject } from './projects';
+import { ProjectsPanel, SaveStatus } from './ProjectsPanel';
 import { useHint } from './common';
 import { FullscreenButton, Range } from '../components/ui';
 import { useMobile } from '../lib/useMobile';
@@ -165,7 +166,7 @@ export function Toolbar() {
   const posRef = useRef<HTMLSpanElement>(null);
   const [bpmText, setBpmText] = useState(String(p.bpm));
   const [bouncing, setBouncing] = useState<number | null>(null);
-  const [modal, setModal] = useState<'guide' | 'keys' | null>(() => (openGuideOnce() ? 'guide' : null));
+  const [modal, setModal] = useState<'guide' | 'keys' | 'projects' | null>(() => (openGuideOnce() ? 'guide' : null));
   const fileRef = useRef<HTMLInputElement>(null);
   const hint = useHint((h) => h.text);
 
@@ -207,17 +208,17 @@ export function Toolbar() {
     {
       label: 'File',
       items: [
-        { heading: 'New from template' },
+        { label: 'My projects…', hint: 'Every project saved in this browser', run: () => setModal('projects') },
+        'sep',
+        { heading: 'New project' },
         ...TEMPLATE_LIST.map((t) => ({
           label: t.name,
-          hint: t.hint,
-          run: () => {
-            if (confirm(`Start a new “${t.name}” session? Save the current one first (File → Save) if you want to keep it.`)) s.loadProject(fromTemplate(t.id));
-          },
+          hint: `${t.hint} — your current project stays saved in My projects`,
+          run: () => void startProject(fromTemplate(t.id)),
         })),
         'sep',
         { label: 'Open session file…', run: () => fileRef.current?.click() },
-        { label: 'Save session file', run: () => download(new Blob([JSON.stringify(p, null, 1)], { type: 'application/json' }), `${p.name || 'session'}.sonare.json`) },
+        { label: 'Save session file (with recordings)', hint: 'One file with the whole project and its audio — for backups or another device', run: () => void exportSessionFile(p) },
         'sep',
         { label: 'Export WAV…', hint: 'Render the whole song to a WAV file', run: () => void doExport() },
       ],
@@ -448,6 +449,7 @@ export function Toolbar() {
           <HelpCircle />
         </button>
       )}
+      <SaveStatus onClick={() => setModal('projects')} />
       <input
         className="input tp-name"
         value={p.name}
@@ -471,9 +473,8 @@ export function Toolbar() {
           e.target.value = '';
           if (!f) return;
           try {
-            const data = JSON.parse(await f.text());
-            if (!Array.isArray(data.tracks)) throw new Error('bad file');
-            s.loadProject(data);
+            await importSessionFile(await f.text());
+            setModal(null);
           } catch {
             alert('That file is not a Sonare session.');
           }
@@ -500,16 +501,19 @@ export function Toolbar() {
                 key={t.id}
                 className="btn sm"
                 onClick={() => {
-                  if (confirm(`Load the “${t.name}” template? Save your current session first if you want to keep it.`)) {
-                    s.loadProject(fromTemplate(t.id));
-                    setModal(null);
-                  }
+                  void startProject(fromTemplate(t.id));
+                  setModal(null);
                 }}
               >
                 {t.name}
               </button>
             ))}
           </div>
+        </Modal>
+      )}
+      {modal === 'projects' && (
+        <Modal title="My projects" onClose={() => setModal(null)}>
+          <ProjectsPanel onClose={() => setModal(null)} onOpenFile={() => fileRef.current?.click()} />
         </Modal>
       )}
       {modal === 'keys' && (
