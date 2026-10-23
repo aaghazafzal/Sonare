@@ -62,5 +62,9 @@ Drop a new folder into `Audio/` and re-run to add an instrument, then `npm run c
 
 All instrument graphics are drawn in SVG/CSS so they follow the theme and skin settings — no third-party images. App
 icons and the social image are drawn by `scripts/make-images.py`.
-Fonts are self-hosted via Fontsource (SIL OFL). Samples come from the `Audio/` folder; before publishing the site,
-confirm each sample set's licence (many look like the CC-BY FluidR3 / tonejs-instruments sets, which need attribution).
+Fonts are self-hosted via Fontsource (SIL OFL). The instrument samples in `Audio/` are Univora's own recordings.
+
+## Deploy
+
+Hosted on Cloudflare Pages at <https://sonare.website> — see [DEPLOY.md](DEPLOY.md). Headers live in `public/_headers`
+(mirrored in `vercel.json`).

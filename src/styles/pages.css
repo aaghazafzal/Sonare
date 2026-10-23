@@ -278,3 +278,9 @@
     justify-content: center;
   }
 }
+
+/* shown for the moment a page's code is loading */
+.page-loading {
+  flex: 1;
+  background: var(--bg);
+}

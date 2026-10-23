@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://sonare-nine.vercel.app/sitemap.xml
+Sitemap: https://sonare.website/sitemap.xml

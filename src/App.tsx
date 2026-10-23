@@ -1,10 +1,7 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AudioWaveform, House, Piano, Settings2, Volume2, VolumeX } from 'lucide-react';
 import { PlayPage } from './pages/PlayPage';
-import { StudioPage } from './pages/StudioPage';
-import { SettingsPage } from './pages/SettingsPage';
 import { HomePage } from './pages/HomePage';
-import { NotFoundPage, PrivacyPage, TermsPage } from './pages/InfoPages';
 import { LogoMark } from './components/Logo';
 import { setLesson } from './learn/lesson';
 import { applySettings, useSettings } from './theme/settings';
@@ -15,6 +12,13 @@ import { installUiSounds } from './audio/uiSounds';
 import { installAutosave } from './studio/projects';
 import { useStudio } from './studio/store';
 import * as Tone from 'tone';
+
+// the studio, settings and info pages load on first visit, so Home and Play open faster
+const StudioPage = lazy(() => import('./pages/StudioPage').then((m) => ({ default: m.StudioPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const PrivacyPage = lazy(() => import('./pages/InfoPages').then((m) => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import('./pages/InfoPages').then((m) => ({ default: m.TermsPage })));
+const NotFoundPage = lazy(() => import('./pages/InfoPages').then((m) => ({ default: m.NotFoundPage })));
 
 type Route = 'home' | 'play' | 'studio' | 'settings' | 'privacy' | 'terms' | 'notfound';
 const ROUTES: Route[] = ['home', 'play', 'studio', 'settings', 'privacy', 'terms'];
@@ -130,13 +134,15 @@ export default function App() {
       </nav>
       <main className="content">
         <AudioGate />
-        {route === 'home' && <HomePage />}
-        {route === 'play' && <PlayPage goStudio={() => go('studio')} />}
-        {route === 'studio' && <StudioPage />}
-        {route === 'settings' && <SettingsPage />}
-        {route === 'privacy' && <PrivacyPage />}
-        {route === 'terms' && <TermsPage />}
-        {route === 'notfound' && <NotFoundPage />}
+        <Suspense fallback={<div className="page-loading" aria-label="Loading" />}>
+          {route === 'home' && <HomePage />}
+          {route === 'play' && <PlayPage goStudio={() => go('studio')} />}
+          {route === 'studio' && <StudioPage />}
+          {route === 'settings' && <SettingsPage />}
+          {route === 'privacy' && <PrivacyPage />}
+          {route === 'terms' && <TermsPage />}
+          {route === 'notfound' && <NotFoundPage />}
+        </Suspense>
       </main>
     </div>
   );
