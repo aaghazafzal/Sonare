@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { SiteFooter, CONTACT_URL } from '../components/SiteFooter';
+import { SiteFooter, CONTACT_URL, UNIVORA_URL } from '../components/SiteFooter';
 import { LogoMark } from '../components/Logo';
 import { Keyboard } from '../components/instruments/Keyboard';
 import { noteOff, noteOn, useLive } from '../audio/live';
@@ -69,7 +69,7 @@ function DocPage({ title, summary, sections }: { title: string; summary: ReactNo
   );
 }
 
-const Contact = ({ children = 'open an issue on GitHub' }: { children?: ReactNode }) => (
+const Contact = ({ children = 'contact Univora support' }: { children?: ReactNode }) => (
   <a href={CONTACT_URL} target="_blank" rel="noreferrer">
     {children}
   </a>
@@ -90,6 +90,19 @@ export function PrivacyPage() {
         </>
       }
       sections={[
+        {
+          id: 'who',
+          title: 'Who we are',
+          body: (
+            <p>
+              Sonare is made and run by{' '}
+              <a href={UNIVORA_URL} target="_blank" rel="noreferrer">
+                Univora
+              </a>
+              . In this policy, “we” and “us” mean Univora.
+            </p>
+          ),
+        },
         {
           id: 'what',
           title: 'What we collect',
@@ -186,6 +199,7 @@ export function PrivacyPage() {
           body: (
             <p>
               If this policy changes, the new version will be posted here with a new date at the top. Questions or concerns? <Contact />.
+              Anything you send to support is handled by Univora under the policies shown on univora.site.
             </p>
           ),
         },
@@ -212,8 +226,12 @@ export function TermsPage() {
           body: (
             <>
               <p>
-                By using Sonare you agree to these terms. You can play, practise, compose and record with it for free, for personal or
-                professional work, without creating an account.
+                Sonare is provided by{' '}
+                <a href={UNIVORA_URL} target="_blank" rel="noreferrer">
+                  Univora
+                </a>{' '}
+                (“we”, “us”). By using Sonare you agree to these terms. You can play, practise, compose and record with it for free, for
+                personal or professional work, without creating an account.
               </p>
               <p>Sonare runs entirely in your browser. A recent version of Chrome, Edge, Firefox or Safari gives the best results.</p>
             </>
@@ -254,7 +272,7 @@ export function TermsPage() {
               <ul>
                 <li>try to disrupt, overload or break into the site or the servers it runs on;</li>
                 <li>download the sample library in bulk with scripts or bots;</li>
-                <li>present Sonare, or a copy of it, as your own product.</li>
+                <li>copy Sonare’s code or design, or present Sonare or a copy of it as your own product.</li>
               </ul>
             </>
           ),
@@ -280,7 +298,7 @@ export function TermsPage() {
                 promise it will always be available, error-free or suitable for a particular purpose.
               </p>
               <p>
-                To the extent the law allows, Sonare and its maker aren’t liable for any loss — including lost projects or recordings — that
+                To the extent the law allows, Univora isn’t liable for any loss — including lost projects or recordings — that
                 comes from using it.
               </p>
             </>

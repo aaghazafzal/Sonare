@@ -2,6 +2,8 @@
 
 Play 106 sampled instruments plus 6 drum kits in the browser, then build full tracks (beats, bass, keys, vocals) in the studio.
 
+A product of [Univora](https://www.univora.site) — support and requests go to <https://www.univora.site/support>. Not open source.
+
 ## Run
 
 ```bash

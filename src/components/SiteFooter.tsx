@@ -1,7 +1,9 @@
 import { LogoMark } from './Logo';
 import { InstallButton } from './ui';
 
-export const CONTACT_URL = 'https://github.com/aaghazafzal/Sonare/issues';
+/** Sonare is a Univora product; questions, bug reports and requests go to Univora's support page. */
+export const UNIVORA_URL = 'https://www.univora.site';
+export const CONTACT_URL = `${UNIVORA_URL}/support`;
 
 const COLUMNS: { title: string; links: { label: string; href: string; external?: boolean }[] }[] = [
   {
@@ -25,7 +27,8 @@ const COLUMNS: { title: string; links: { label: string; href: string; external?:
     links: [
       { label: 'Privacy', href: '#/privacy' },
       { label: 'Terms of use', href: '#/terms' },
-      { label: 'Report a problem', href: CONTACT_URL, external: true },
+      { label: 'Help and support', href: CONTACT_URL, external: true },
+      { label: 'Univora', href: UNIVORA_URL, external: true },
     ],
   },
 ];
@@ -41,6 +44,12 @@ export function SiteFooter() {
             <span>Sonare</span>
           </a>
           <p>Instruments, song lessons and a music studio that run in your browser. Free, with nothing to sign up for.</p>
+          <p className="site-foot-by">
+            A product of{' '}
+            <a href={UNIVORA_URL} target="_blank" rel="noreferrer">
+              Univora
+            </a>
+          </p>
           <InstallButton className="btn" />
         </div>
         {COLUMNS.map((c) => (
@@ -55,7 +64,7 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="site-foot-bottom">
-        <span>© {new Date().getFullYear()} Sonare</span>
+        <span>© {new Date().getFullYear()} Univora. Sonare is part of the Univora platform.</span>
         <span>Your projects and recordings stay in this browser.</span>
       </div>
     </footer>

@@ -37,6 +37,18 @@
   font-size: 14.5px;
   color: var(--text-muted);
 }
+.site-foot-brand p.site-foot-by {
+  margin-top: -6px;
+  font-size: 13.5px;
+  color: var(--text-faint);
+}
+.home .site-foot-by a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.home .site-foot-by a:hover {
+  color: var(--primary);
+}
 .site-foot-brand .btn:empty {
   display: none;
 }
