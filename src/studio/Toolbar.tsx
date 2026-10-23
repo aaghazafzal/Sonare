@@ -20,6 +20,7 @@ import {
   ZoomIn,
   Music2,
   HelpCircle,
+  Menu as MenuIcon,
 } from 'lucide-react';
 import {
   useStudio,
@@ -38,7 +39,7 @@ import {
 import { bounce, currentBeat, pause, play, record, seek, stop, setMode } from './playback';
 import { exportMix, exportStems, type ExportFormat } from './render';
 import { exportMidi, importMidi } from './midi';
-import { Segmented } from '../components/ui';
+import { Segmented, Sheet } from '../components/ui';
 import { exportSessionFile, importSessionFile, startProject } from './projects';
 import { ProjectsPanel, SaveStatus } from './ProjectsPanel';
 import { useHint } from './common';
@@ -116,6 +117,50 @@ function MenuBar({ menus }: { menus: { label: string; items: MenuItem[] }[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/** Phones: every menu in one sheet instead of a menu bar. */
+function MenuSheet({ menus }: { menus: { label: string; items: MenuItem[] }[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className="btn icon fl-menu-toggle" onClick={() => setOpen(true)} aria-label="Menu">
+        <MenuIcon />
+      </button>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Studio menu" tall>
+        <div className="m-menus">
+          {menus.map((m) => (
+            <section key={m.label}>
+              <h4>{m.label}</h4>
+              {m.items.map((it, i) =>
+                it === 'sep' ? null : 'heading' in it ? (
+                  <div key={i} className="m-menu-heading faint">
+                    {it.heading}
+                  </div>
+                ) : (
+                  <button
+                    key={i}
+                    className={`m-menu-item ${it.on ? 'checked' : ''}`}
+                    disabled={it.disabled}
+                    onClick={() => {
+                      setOpen(false);
+                      it.run();
+                    }}
+                  >
+                    <span className="menu-check">{it.on ? '✓' : ''}</span>
+                    <span className="m-menu-label">
+                      {it.label}
+                      {it.hint && <small className="faint">{it.hint}</small>}
+                    </span>
+                  </button>
+                ),
+              )}
+            </section>
+          ))}
+        </div>
+      </Sheet>
+    </>
   );
 }
 
@@ -349,7 +394,7 @@ export function Toolbar() {
 
   return (
     <div className="fl-toolbar">
-      <MenuBar menus={menus} />
+      {mobile === 'portrait' ? <MenuSheet menus={menus} /> : <MenuBar menus={menus} />}
 
       <div className="fl-mode" data-hint="PAT loops the selected pattern · SONG plays the whole playlist">
         <button className={p.mode === 'pattern' ? 'on' : ''} onClick={() => setMode('pattern')}>

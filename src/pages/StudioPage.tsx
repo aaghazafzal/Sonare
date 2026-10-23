@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Grid3x3, Music2, Piano, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronUp, FolderTree, Grid3x3, ListMusic, Music2, Piano, SlidersHorizontal } from 'lucide-react';
 import { Toolbar } from '../studio/Toolbar';
 import { Playlist } from '../studio/Playlist';
 import { ChannelRack } from '../studio/ChannelRack';
@@ -96,9 +96,19 @@ export function StudioPage() {
   const [views, setViews] = useState<Record<string, ViewKind>>({});
   const view = track ? views[track.id] ?? defaultView(track.instrumentId) : 'keyboard';
   const showDockInstrument = s.dock === 'instrument' && !!track && track.kind !== 'audio';
+  // phones held upright show one full-screen view at a time, picked from the bar at the bottom
+  const phone = mobile === 'portrait';
+  const phoneView = s.dockOpen ? s.dock : 'playlist';
+  const phoneTabs = [
+    { id: 'playlist', label: 'Playlist', icon: ListMusic },
+    { id: 'rack', label: 'Rack', icon: Grid3x3 },
+    { id: 'roll', label: 'Roll', icon: Music2 },
+    { id: 'mixer', label: 'Mixer', icon: SlidersHorizontal },
+    { id: 'instrument', label: 'Play', icon: Piano },
+  ] as const;
 
   return (
-    <div className="studio fl" ref={rootRef}>
+    <div className={`studio fl ${phone ? 'fl-phone' : ''} ${phone && s.dockOpen ? 'phone-dock' : ''}`} ref={rootRef}>
       <Toolbar />
       <div className="fl-body">
         {s.browserOpen && !mobile && <Browser />}
@@ -106,7 +116,7 @@ export function StudioPage() {
           <div className="fl-playlist">
             <Playlist />
           </div>
-          <div className={`dock ${s.dockOpen ? '' : 'closed'}`} style={{ height: s.dockOpen ? dockH : undefined }}>
+          <div className={`dock ${s.dockOpen ? '' : 'closed'}`} style={{ height: s.dockOpen && !phone ? dockH : undefined }}>
             <div
               className="dock-resize"
               onPointerDown={(e) => {
@@ -185,6 +195,25 @@ export function StudioPage() {
           </div>
         </div>
       </div>
+      {phone && (
+        <nav className="fl-phone-tabs" aria-label="Studio views">
+          {phoneTabs.map((t) => (
+            <button
+              key={t.id}
+              className={phoneView === t.id ? 'on' : ''}
+              aria-current={phoneView === t.id}
+              onClick={() => s.setUi(t.id === 'playlist' ? { dockOpen: false } : { dock: t.id, dockOpen: true })}
+            >
+              <t.icon />
+              <span>{t.label}</span>
+            </button>
+          ))}
+          <button className={s.browserOpen ? 'on' : ''} onClick={() => s.setUi({ browserOpen: true })}>
+            <FolderTree />
+            <span>Browse</span>
+          </button>
+        </nav>
+      )}
       {mobile && (
         <Sheet open={s.browserOpen} onClose={() => s.setUi({ browserOpen: false })} title="Browser" tall>
           <Browser />

@@ -14,7 +14,7 @@ import {
   type ThemeColors,
   type SkinSet,
 } from '../theme/presets';
-import { ColorField, Range, Segmented, Toggle, Knob } from '../components/ui';
+import { ColorField, InstallButton, Range, Segmented, Toggle, Knob } from '../components/ui';
 import { Keyboard } from '../components/instruments/Keyboard';
 import { Fretboard } from '../components/instruments/Fretboard';
 import { DrumKit } from '../components/instruments/DrumKit';
@@ -26,6 +26,7 @@ import { useLive, noteOn, noteOff, strike, liveStrip } from '../audio/live';
 import { Voice, ensureAudio } from '../audio/engine';
 import { displayName } from '../lib/instruments';
 import { scaleNotes } from '../lib/notes';
+import { usePwa } from '../lib/pwa';
 
 type Tab = 'appearance' | 'type' | 'skins' | 'audio' | 'backup';
 
@@ -475,6 +476,7 @@ function Skins() {
 
 function AudioSettings() {
   const st = useSettings();
+  const pwa = usePwa();
   const midi = useMidi();
   return (
     <>
@@ -494,6 +496,9 @@ function AudioSettings() {
       <Section title="Interface">
         <SettingRow label="Click sounds" hint="A soft click when you press buttons and tabs (never recorded)">
           <Toggle on={st.uiSounds} onChange={(v) => st.update({ uiSounds: v })} />
+        </SettingRow>
+        <SettingRow label="Install as an app" hint="Opens full screen from your home screen or dock and works offline with the sounds you've already played">
+          {pwa.installed ? <span className="faint">Installed</span> : pwa.canInstall || pwa.ios ? <InstallButton /> : <span className="faint">Use your browser menu → Install / Add to Home screen</span>}
         </SettingRow>
       </Section>
       <Section title="Computer keyboard">

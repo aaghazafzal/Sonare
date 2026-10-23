@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type * as Tone from 'tone';
-import { Maximize, Minimize } from 'lucide-react';
+import { Download, Maximize, Minimize, Share } from 'lucide-react';
+import { promptInstall, usePwa } from '../lib/pwa';
 
 export function Range({
   value,
@@ -327,4 +328,23 @@ export function FullscreenButton({ className = 'btn icon ghost', withLabel = fal
       {withLabel && <span>{fs.on ? 'Exit full screen' : 'Full screen'}</span>}
     </button>
   );
+}
+
+/** "Install app" for the PWA, or the iPhone instructions, or nothing once installed. */
+export function InstallButton({ className = 'btn' }: { className?: string }) {
+  const pwa = usePwa();
+  if (pwa.installed) return null;
+  if (pwa.canInstall)
+    return (
+      <button className={className} onClick={() => void promptInstall()} data-hint="Add Sonare to your home screen or dock — opens full screen like an app">
+        <Download /> Install app
+      </button>
+    );
+  if (pwa.ios)
+    return (
+      <span className="install-hint faint">
+        <Share size={13} /> On iPhone/iPad: Share → Add to Home Screen
+      </span>
+    );
+  return null;
 }

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
 const AUDIO_DIR = path.resolve(__dirname, 'Audio');
 const MANIFEST = path.resolve(__dirname, 'src/data/manifest.json');
@@ -60,7 +61,54 @@ function samples(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), samples()],
+  plugins: [
+    react(),
+    samples(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'og-image.png'],
+      manifest: {
+        name: 'Sonare — Instruments & Studio',
+        short_name: 'Sonare',
+        description: 'Play 112 sampled instruments and make full songs in a browser studio.',
+        start_url: '/?source=app#/play',
+        scope: '/',
+        display: 'standalone',
+        orientation: 'any',
+        background_color: '#0f1012',
+        theme_color: '#0f1012',
+        categories: ['music', 'entertainment', 'education'],
+        icons: [
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+        shortcuts: [
+          { name: 'Play', url: '/#/play', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+          { name: 'Studio', url: '/#/studio', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+          { name: 'Learn songs', url: '/#/play?songs', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+        ],
+      },
+      workbox: {
+        // the app shell is precached; samples are cached the first time each one is played
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,webmanifest}'],
+        globIgnores: ['audio/**'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        navigateFallback: 'index.html',
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/audio/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'sonare-samples',
+              expiration: { maxEntries: 6000, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+    }),
+  ],
   server: { port: 5180 },
-  build: { chunkSizeWarningLimit: 900 },
+  build: { chunkSizeWarningLimit: 1000 },
 });

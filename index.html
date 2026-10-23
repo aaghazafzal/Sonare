@@ -4,12 +4,74 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0f1012" />
-    <meta name="description" content="Play 100+ sampled instruments in the browser and produce full tracks in the studio." />
+    <title>Sonare — Play piano, guitar, drums & 112 instruments online, free music studio</title>
+    <meta
+      name="description"
+      content="Play 112 real sampled instruments in your browser — piano, guitar, drums, flute, violin and more — with your keyboard, mouse, touch or MIDI. Make beats, record vocals and export songs in a free FL-style online studio."
+    />
+    <link rel="canonical" href="https://sonare-nine.vercel.app/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Sonare — Instruments & Studio</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sonare" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sonare" />
+    <meta property="og:url" content="https://sonare-nine.vercel.app/" />
+    <meta property="og:title" content="Sonare — Online instruments & music studio" />
+    <meta property="og:description" content="Play 112 instruments in your browser. Make beats, record vocals and finish songs in the studio." />
+    <meta property="og:image" content="https://sonare-nine.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sonare — Online instruments & music studio" />
+    <meta name="twitter:description" content="Play 112 instruments in your browser. Make beats, record vocals and finish songs in the studio." />
+    <meta name="twitter:image" content="https://sonare-nine.vercel.app/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Sonare",
+        "url": "https://sonare-nine.vercel.app/",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Any (web browser)",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Online virtual piano, guitar, drums and 112 sampled instruments with a free FL Studio-style music studio: step sequencer, piano roll, mixer with effects, automation, vocal recording and WAV/MP3/MIDI export.",
+        "featureList": [
+          "112 sampled instruments",
+          "Virtual piano with computer keyboard keys",
+          "Guitar, bass, violin, drums, flute and marimba",
+          "Learn songs with falling notes",
+          "Step sequencer, playlist and piano roll",
+          "Mixer with insert effects and automation",
+          "Vocal recording",
+          "WAV, MP3, stems and MIDI export"
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- shown to crawlers and before the app loads; React replaces it -->
+      <main style="max-width: 720px; margin: 10vh auto; padding: 0 20px; font-family: system-ui, sans-serif; color: #ebe7df; background: #0f1012">
+        <h1>Sonare — online instruments and music studio</h1>
+        <p>
+          Play a virtual piano, guitar, drums, flute, violin, marimba and 112 sampled instruments right in your browser with your computer
+          keyboard, mouse, touch screen or a MIDI keyboard.
+        </p>
+        <h2>Free online music studio</h2>
+        <p>
+          Make beats in the step sequencer, write melodies in the piano roll, arrange patterns on the playlist, add effects and automation in
+          the mixer, record vocals and export WAV, MP3, stems or MIDI.
+        </p>
+        <h2>Learn songs</h2>
+        <p>Practise classic melodies with falling notes — the song waits for you until you play the right key.</p>
+        <p><a href="#/play" style="color: #e3a043">Start playing</a> · <a href="#/studio" style="color: #e3a043">Open the studio</a></p>
+      </main>
+    </div>
+    <noscript>Sonare needs JavaScript to play sound.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

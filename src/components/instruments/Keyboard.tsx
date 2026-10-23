@@ -18,6 +18,21 @@ export function keyboardSkinVars(skin: KeyboardSkin): CSSProperties {
   };
 }
 
+/** Horizontal position of each key as a fraction of the keyboard width (matches the drawn keys). */
+export function keyGeometry(low: number, high: number) {
+  let whites = 0;
+  for (let m = low; m <= high; m++) if (!isBlack(m)) whites++;
+  const ww = 1 / whites;
+  const bw = ww * 0.6;
+  const out = new Map<number, { left: number; width: number; black: boolean }>();
+  let i = 0;
+  for (let m = low; m <= high; m++) {
+    if (isBlack(m)) out.set(m, { left: i * ww - bw / 2 + BLACK_OFFSET[pitchClass(m)] * bw, width: bw, black: true });
+    else out.set(m, { left: i++ * ww, width: ww, black: false });
+  }
+  return out;
+}
+
 export function Keyboard({
   low,
   high,
@@ -32,6 +47,7 @@ export function Keyboard({
   className = '',
   renderLabel,
   marked,
+  hinted,
 }: {
   low: number;
   high: number;
@@ -48,6 +64,8 @@ export function Keyboard({
   renderLabel?: (midi: number, black: boolean) => ReactNode;
   /** keys drawn with a selection outline (keybind editor) */
   marked?: Record<number, true | undefined>;
+  /** keys to play next in a song lesson, coloured by hand */
+  hinted?: Record<number, 'R' | 'L'>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, number>());
@@ -123,7 +141,7 @@ export function Keyboard({
           <div
             key={m}
             data-midi={m}
-            className={`wk ${active[m] ? 'down' : ''} ${pitchClass(m) === 0 ? 'is-c' : ''} ${marked?.[m] ? 'marked' : ''}`}
+            className={`wk ${active[m] ? 'down' : ''} ${pitchClass(m) === 0 ? 'is-c' : ''} ${marked?.[m] ? 'marked' : ''} ${hinted?.[m] ? `hint-${hinted[m]}` : ''}`}
             style={{ left: `${i * ww}%`, width: `${ww}%` }}
           >
             {renderLabel ? renderLabel(m, false) : label(m)}
@@ -133,7 +151,7 @@ export function Keyboard({
           <div
             key={midi}
             data-midi={midi}
-            className={`bk ${active[midi] ? 'down' : ''} ${marked?.[midi] ? 'marked' : ''}`}
+            className={`bk ${active[midi] ? 'down' : ''} ${marked?.[midi] ? 'marked' : ''} ${hinted?.[midi] ? `hint-${hinted[midi]}` : ''}`}
             style={{ left: `${pos * ww - bw / 2 + BLACK_OFFSET[pitchClass(midi)] * bw}%`, width: `${bw}%` }}
           >
             {renderLabel

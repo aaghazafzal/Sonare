@@ -17,14 +17,18 @@ import './styles/studio.css';
 import './styles/studio-fl.css';
 import './styles/settings.css';
 import './styles/bigpiano.css';
+import './styles/learn.css';
+import './styles/home.css';
 import './styles/mobile.css';
 import { applySettings, useSettings } from './theme/settings';
 import { installMobileDetection } from './lib/useMobile';
+import { installPwa } from './lib/pwa';
 import App from './App';
 
 // apply the saved theme before first paint to avoid a flash of the default colours
 applySettings(useSettings.getState());
 installMobileDetection();
+installPwa();
 
 if (import.meta.env.DEV) {
   // handles for poking at the running app from the devtools console

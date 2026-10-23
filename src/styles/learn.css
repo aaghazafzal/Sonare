@@ -1,0 +1,263 @@
+/* ------------------------------------------------------- song lessons */
+
+/* keys to press next, coloured by hand */
+.kb .wk.hint-R,
+.kb .wk.hint-L {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--wk) 80%, black) 0%,
+    color-mix(in srgb, var(--wk) 55%, var(--hand)) 10%,
+    color-mix(in srgb, var(--wk) 40%, var(--hand)) 100%
+  );
+}
+.kb .bk.hint-R,
+.kb .bk.hint-L {
+  box-shadow:
+    inset 0 0 0 100px color-mix(in srgb, var(--hand) 70%, transparent),
+    1px 3px 4px rgb(0 0 0 / 0.45);
+}
+.kb .hint-R {
+  --hand: var(--primary);
+}
+.kb .hint-L {
+  --hand: var(--secondary);
+}
+.kb .wk.down.hint-R,
+.kb .wk.down.hint-L {
+  background: color-mix(in srgb, var(--wk) 30%, var(--hand));
+}
+
+.falling {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.bp-stage.bp-fall {
+  position: relative;
+  display: block;
+  padding: 0;
+  background: color-mix(in srgb, var(--bg) 70%, black);
+}
+
+/* picker */
+.bp-pop-songs {
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(600px, 74vh);
+  overflow-y: auto;
+}
+.song-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.song-picker section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.song-picker h5 {
+  margin: 0 0 4px;
+  padding: 0 10px;
+}
+.song-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  text-align: left;
+  color: var(--text);
+}
+.song-row:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.song-row.on {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.song-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.song-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.song-meta {
+  font-size: 0.74rem;
+}
+.song-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.74rem;
+  color: var(--success);
+}
+.song-note {
+  font-size: 0.72rem;
+  margin: 0;
+  padding: 0 10px;
+}
+
+/* lesson bar */
+.lesson-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+.lesson-song {
+  max-width: 240px;
+  font-weight: 600;
+}
+.lesson-song-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lesson-speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lesson-speed .range {
+  width: 90px;
+}
+.lesson-speed .mono {
+  font-size: 0.76rem;
+  min-width: 3.2em;
+  color: var(--text-muted);
+}
+.lesson-progress {
+  position: relative;
+  flex: 1;
+  min-width: 100px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--inset);
+  cursor: pointer;
+  touch-action: none;
+}
+.lesson-progress::before {
+  /* larger hit area */
+  content: '';
+  position: absolute;
+  inset: -9px 0;
+}
+.lesson-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+}
+.lesson-score {
+  font-size: 0.8rem;
+  min-width: 4.5em;
+  text-align: right;
+}
+.lesson-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.lesson-play {
+  min-width: 92px;
+}
+
+.lesson-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+  pointer-events: none;
+}
+.lesson-card {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 380px;
+  padding: 18px 20px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 40px -16px rgb(0 0 0 / 0.6);
+}
+.lesson-card h3 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+.lesson-card p {
+  margin: 0 0 6px;
+  font-size: 0.86rem;
+}
+.lesson-result b {
+  font-size: 1.4rem;
+  color: var(--primary);
+}
+
+/* stand-alone stage (phones) */
+.lesson-stage {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.lesson-stage .lesson-bar {
+  padding: 8px;
+  gap: 8px;
+}
+.lesson-fall {
+  position: relative;
+  flex: 1;
+  min-height: 120px;
+  background: color-mix(in srgb, var(--bg) 70%, black);
+}
+.lesson-keys {
+  flex: none;
+  background: #000;
+}
+
+.song-row {
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* phones: song and close on top, then the modes, then speed and the progress line */
+.lesson-stage .lesson-song {
+  flex: 1;
+  max-width: none;
+  min-width: 0;
+}
+.lesson-stage .lesson-speed {
+  flex: 1;
+}
+.lesson-stage .lesson-speed .range {
+  flex: 1;
+  width: auto;
+}
+.lesson-stage .lesson-progress {
+  flex: 1 0 100%;
+  order: 10;
+}
+.lesson-stage .lesson-actions {
+  margin-left: auto;
+}
+
+/* during a song the falling notes get the room; the keys stay big enough to hit */
+.bp-keys.with-song {
+  height: clamp(170px, 30vh, 300px);
+}

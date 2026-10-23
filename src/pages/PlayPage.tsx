@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Keyboard as KbIcon, Loader2, Maximize2, Minus, Plus, SlidersHorizontal, Usb } from 'lucide-react';
+import { ChevronDown, GraduationCap, Keyboard as KbIcon, Loader2, Maximize2, Minus, Plus, SlidersHorizontal, Usb } from 'lucide-react';
 import { InstrumentStage } from '../components/instruments/InstrumentStage';
 import { InstrumentBrowser, Stepper, TakeRecorder } from '../components/PlayParts';
 import { BigPiano } from '../components/BigPiano';
@@ -10,6 +10,8 @@ import { getInstrument, getKit, isKitId, displayName, defaultView, FAMILY_LABELS
 import { FullscreenButton, Knob, LevelMeter, Range, Sheet } from '../components/ui';
 import { useMobile } from '../lib/useMobile';
 import { useSettings } from '../theme/settings';
+import { LessonStage, SongPicker } from '../learn/LearnParts';
+import { setLesson, useLesson } from '../learn/lesson';
 
 const RECENT_KEY = 'sonare.recent';
 
@@ -47,6 +49,8 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
   const setSettings = useSettings((s) => s.update);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const lessonId = useLesson((s) => s.songId);
+  const wantsSongs = useLesson((s) => s.pickerOpen);
   const isKit = isKitId(live.instrumentId);
   const signed = (v: number) => (v > 0 ? `+${v}` : String(v));
 
@@ -81,20 +85,31 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
                 Sus
               </button>
             )}
+            <button className={`btn icon ${lessonId ? 'on' : ''}`} onClick={() => setLesson({ pickerOpen: true })} aria-label="Learn songs">
+              <GraduationCap />
+            </button>
             <button className="btn icon" onClick={() => setMoreOpen(true)} aria-label="Sound and recording controls">
               <SlidersHorizontal />
             </button>
           </header>
 
           <div className="stage-panel panel">
-            <InstrumentStage
-              instrumentId={live.instrumentId}
-              nativeView={defaultView(live.instrumentId)}
-              view={live.view}
-              onViewChange={(v) => live.set({ view: v })}
-            />
+            {lessonId ? (
+              <LessonStage onPickSong={() => setLesson({ pickerOpen: true })} />
+            ) : (
+              <InstrumentStage
+                instrumentId={live.instrumentId}
+                nativeView={defaultView(live.instrumentId)}
+                view={live.view}
+                onViewChange={(v) => live.set({ view: v })}
+              />
+            )}
           </div>
         </div>
+
+        <Sheet open={wantsSongs} onClose={() => setLesson({ pickerOpen: false })} title="Learn a song" tall>
+          <SongPicker />
+        </Sheet>
 
         <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Instruments" tall>
           {recent.filter((r) => r !== live.instrumentId).length > 0 && (
@@ -181,6 +196,16 @@ export function PlayPage({ goStudio }: { goStudio: () => void }) {
           <div className="recent">
             <button className="btn sm" onClick={() => setSettings({ playLayout: 'big' })} title="Full-width piano with keyboard hints">
               <Maximize2 /> Big piano
+            </button>
+            <button
+              className="btn sm"
+              onClick={() => {
+                setSettings({ playLayout: 'big' });
+                setLesson({ pickerOpen: true });
+              }}
+              title="Learn songs with falling notes (opens the Big piano)"
+            >
+              <GraduationCap /> Learn songs
             </button>
             {recent
               .filter((r) => r !== live.instrumentId)

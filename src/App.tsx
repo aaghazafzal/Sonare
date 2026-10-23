@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { AudioWaveform, Piano, Settings2, Volume2, VolumeX } from 'lucide-react';
+import { AudioWaveform, House, Piano, Settings2, Volume2, VolumeX } from 'lucide-react';
 import { PlayPage } from './pages/PlayPage';
 import { StudioPage } from './pages/StudioPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { HomePage } from './pages/HomePage';
+import { setLesson } from './learn/lesson';
 import { applySettings, useSettings } from './theme/settings';
 import { installKeyboardInput } from './audio/input';
 import { ensureAudio, master, useLoading } from './audio/engine';
@@ -12,15 +14,30 @@ import { installAutosave } from './studio/projects';
 import { useStudio } from './studio/store';
 import * as Tone from 'tone';
 
-type Route = 'play' | 'studio' | 'settings';
+type Route = 'home' | 'play' | 'studio' | 'settings';
+const ROUTES: Route[] = ['home', 'play', 'studio', 'settings'];
 const routeFromHash = (): Route => {
-  const h = location.hash.replace('#/', '');
-  return h === 'studio' || h === 'settings' ? h : 'play';
+  const h = location.hash.replace(/^#\/?/, '').split('?')[0];
+  return ROUTES.includes(h as Route) ? (h as Route) : h ? 'play' : 'home';
 };
+const TITLES: Record<Route, string> = {
+  home: 'Sonare — Play piano, guitar, drums & 112 instruments online, free music studio',
+  play: 'Play — Sonare online instruments',
+  studio: 'Studio — Sonare beat maker & recorder',
+  settings: 'Settings — Sonare',
+};
+/** "#/play?songs" (app shortcut, home page) opens the song list */
+function readHashQuery() {
+  const q = location.hash.split('?')[1];
+  if (q === 'songs') {
+    setLesson({ pickerOpen: true });
+    history.replaceState(null, '', '#/play');
+  }
+}
 
 function Wordmark() {
   return (
-    <div className="wordmark" aria-label="Sonare">
+    <a className="wordmark" aria-label="Sonare home" href="#/home">
       <svg viewBox="0 0 28 28" width="26" height="26" aria-hidden>
         <rect x="1" y="1" width="26" height="26" rx="6" fill="var(--panel-alt)" stroke="var(--border-strong)" />
         <g fill="var(--text)">
@@ -35,7 +52,7 @@ function Wordmark() {
         </g>
       </svg>
       <span>Sonare</span>
-    </div>
+    </a>
   );
 }
 
@@ -69,7 +86,14 @@ export default function App() {
   useEffect(() => installUiSounds(), []);
   useEffect(() => installAutosave(), []);
   useEffect(() => {
-    const on = () => setRoute(routeFromHash());
+    document.title = TITLES[route];
+  }, [route]);
+  useEffect(() => {
+    readHashQuery();
+    const on = () => {
+      readHashQuery();
+      setRoute(routeFromHash());
+    };
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);
@@ -78,6 +102,7 @@ export default function App() {
   };
 
   const nav: { id: Route; label: string; icon: typeof Piano }[] = [
+    { id: 'home', label: 'Home', icon: House },
     { id: 'play', label: 'Play', icon: Piano },
     { id: 'studio', label: 'Studio', icon: AudioWaveform },
     { id: 'settings', label: 'Settings', icon: Settings2 },
@@ -107,6 +132,7 @@ export default function App() {
       </nav>
       <main className="content">
         <AudioGate />
+        {route === 'home' && <HomePage />}
         {route === 'play' && <PlayPage goStudio={() => go('studio')} />}
         {route === 'studio' && <StudioPage />}
         {route === 'settings' && <SettingsPage />}

@@ -21,6 +21,7 @@ import { presetById } from './presets';
 import { importMidi } from './midi';
 import { useMobile, useMobileStore } from '../lib/useMobile';
 import { createLongPress, menuPosition } from '../lib/longPress';
+import { attachPinch, multiTouch } from '../lib/pinch';
 
 const HEAD_DESKTOP = 148;
 const HEAD_MOBILE = 72;
@@ -52,6 +53,29 @@ export function Playlist() {
   const press = useRef(createLongPress()).current;
   const lanePress = useRef(createLongPress()).current;
   const cur = currentPattern(p);
+  const placedAt = useRef(0);
+
+  // two fingers zoom the playlist; a clip the first finger just drew is taken back
+  useEffect(() => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    return attachPinch(
+      sc,
+      (f) => {
+        const st = useStudio.getState();
+        const next = Math.max(8, Math.min(96, st.pxPerBeat * f));
+        st.setUi({ pxPerBeat: next });
+        return next / st.pxPerBeat;
+      },
+      () => {
+        drag.current = null;
+        if (Date.now() - placedAt.current < 400) {
+          placedAt.current = 0;
+          useStudio.getState().undo();
+        }
+      },
+    );
+  }, []);
   const patternsById = new Map(p.patterns.map((x) => [x.id, x]));
 
   // playhead follows transport without re-rendering React
@@ -87,7 +111,7 @@ export function Playlist() {
 
   const onItemDown = (e: React.PointerEvent, it: PlaylistItem) => {
     press.track(e);
-    if (e.button !== 0) return;
+    if (e.button !== 0 || multiTouch()) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const rel = e.clientX - rect.left;
@@ -163,10 +187,11 @@ export function Playlist() {
     const item: PlaylistItem = { id: uid(), kind: 'pattern', patternId: cur.id, lane, start, length: cur.length };
     s.edit((pr) => ensureLanes({ ...pr, playlist: [...pr.playlist, item], mode: 'song' }, lane));
     s.setUi({ selectedItemId: item.id });
+    placedAt.current = Date.now();
   };
 
   const onLaneDown = (e: React.PointerEvent, lane: number) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || multiTouch()) return;
     const beat = beatAt(e.clientX, e.currentTarget);
     if (tool === 'draw') placePattern(lane, beat);
     else {

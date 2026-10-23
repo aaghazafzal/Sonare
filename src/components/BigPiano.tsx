@@ -20,6 +20,7 @@ import {
   Piano,
   Maximize,
   Minimize,
+  GraduationCap,
 } from 'lucide-react';
 import { Keyboard } from './instruments/Keyboard';
 import { DrumPads } from './instruments/DrumKit';
@@ -45,8 +46,11 @@ import { useSettings, type KeymapMode, type NoteNaming } from '../theme/settings
 import { DEFAULT_CUSTOM_KEYS } from '../lib/keymaps';
 import { CHORD_TYPES, detectChord, isBlack, noteName, solfegeName } from '../lib/notes';
 import { displayName, FAMILY_LABELS, getInstrument, groupedInstruments, isKitId } from '../lib/instruments';
+import { FallingNotes, LessonBar, LessonOverlay, SongPicker, songRange } from '../learn/LearnParts';
+import { setLesson, useLesson } from '../learn/lesson';
+import { songById } from '../learn/songs';
 
-type Panel = 'sounds' | 'rec' | 'metro' | 'fx' | null;
+type Panel = 'sounds' | 'rec' | 'metro' | 'fx' | 'songs' | null;
 
 const ALL_INSTRUMENTS = groupedInstruments().flatMap((g) => g.items);
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -150,6 +154,21 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
   const fs = useFullscreen();
   const kit = isKitId(live.instrumentId);
   const naming = settings.bigLabels;
+  const lessonId = useLesson((s) => s.songId);
+  const lessonHint = useLesson((s) => s.hint);
+  const wantsPicker = useLesson((s) => s.pickerOpen);
+  const song = lessonId ? songById(lessonId) : undefined;
+
+  // "Learn songs" from the home page or the app shortcut
+  useEffect(() => {
+    if (!wantsPicker) return;
+    setPanel('songs');
+    setLesson({ pickerOpen: false });
+  }, [wantsPicker]);
+  // a picked song closes the list
+  useEffect(() => {
+    if (lessonId) setPanel((p) => (p === 'songs' ? null : p));
+  }, [lessonId]);
 
   // close popovers when clicking elsewhere
   useEffect(() => {
@@ -164,17 +183,16 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
   }, [panel]);
 
   /* ---------------------------------------------------------- key range */
-  const labels = useMemo(
-    () => pianoKeyLabels(live.octave, settings.keymap),
-    [live.octave, settings.keymap, settings.customKeys],
-  );
-  const [mapLo, mapHi] = useMemo(
-    () => mappedRange(live.octave, settings.keymap),
-    [live.octave, settings.keymap, settings.customKeys],
-  );
+  const labels = useMemo(() => pianoKeyLabels(live.octave, settings.keymap), [live.octave, settings.keymap, settings.customKeys]);
+  const [mapLo, mapHi] = useMemo(() => mappedRange(live.octave, settings.keymap), [live.octave, settings.keymap, settings.customKeys]);
   const { low, high } = useMemo(() => {
-    if (settings.bigVisible === 'max') return { low: 21, high: 108 };
     const fit = clamp(Math.floor(keysBox.width / 50), 14, 52);
+    // a song shows just its own keys, as large as they fit
+    if (song) {
+      const [lo, hi] = songRange(song, fit);
+      return { low: lo, high: hi };
+    }
+    if (settings.bigVisible === 'max') return { low: 21, high: 108 };
     let lo = mapLo;
     while (isBlack(lo)) lo--;
     const mapped = countWhites(lo, mapHi);
@@ -183,7 +201,7 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
     if (hi >= 108) lo = whitesDown(108, fit - 1);
     hi = Math.min(108, whitesToSpan(lo, fit));
     return { low: lo, high: hi };
-  }, [settings.bigVisible, keysBox.width, mapLo, mapHi]);
+  }, [settings.bigVisible, keysBox.width, mapLo, mapHi, song]);
 
   const nameOf = (m: number, naming: NoteNaming) => (naming === 'solfege' ? solfegeName(m) : noteName(m));
 
@@ -242,18 +260,23 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
   bindSelRef.current = bindSel;
 
   /* -------------------------------------------------- instrument scroller */
-  const idx = Math.max(0, ALL_INSTRUMENTS.findIndex((i) => i.id === live.instrumentId));
+  const idx = Math.max(
+    0,
+    ALL_INSTRUMENTS.findIndex((i) => i.id === live.instrumentId),
+  );
   const step = (d: number) => onPick(ALL_INSTRUMENTS[(idx + d + ALL_INSTRUMENTS.length) % ALL_INSTRUMENTS.length].id);
   const num = (i: number) => String(((i + ALL_INSTRUMENTS.length) % ALL_INSTRUMENTS.length) + 1).padStart(3, '0');
   const neighbour = (d: number) => ALL_INSTRUMENTS[(idx + d + ALL_INSTRUMENTS.length) % ALL_INSTRUMENTS.length];
 
   /* ------------------------------------------------------- now playing */
-  const held = Object.keys(live.active).map(Number).sort((a, b) => a - b);
+  const held = Object.keys(live.active)
+    .map(Number)
+    .sort((a, b) => a - b);
   const lastRef = useRef<number[]>([]);
   if (held.length) lastRef.current = held;
   const shown = held.length ? held : lastRef.current;
   const chord = !kit ? detectChord(shown) : null;
-  const familyLabel = kit ? FAMILY_LABELS.drums : FAMILY_LABELS[getInstrument(live.instrumentId)?.family ?? ''] ?? '';
+  const familyLabel = kit ? FAMILY_LABELS.drums : (FAMILY_LABELS[getInstrument(live.instrumentId)?.family ?? ''] ?? '');
   const dl = useMemo(() => drumKeyLabels(), []);
 
   const keymapHint: Record<KeymapMode, ReactNode> = {
@@ -297,11 +320,7 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
           />
         </div>
 
-        <div
-          className="bp-scroller"
-          onWheel={(e) => step(e.deltaY > 0 ? 1 : -1)}
-          title="Scroll or use the arrows to change sound"
-        >
+        <div className="bp-scroller" onWheel={(e) => step(e.deltaY > 0 ? 1 : -1)} title="Scroll or use the arrows to change sound">
           <div className="bp-scroller-list">
             <button className="bp-scroller-row dim" onClick={() => step(-1)}>
               <span className="mono">{num(idx - 1)}</span>
@@ -329,18 +348,53 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
 
         <div className="bp-tiles">
           <Tile icon={<Music2 />} label="Sounds" on={panel === 'sounds'} onClick={() => setPanel(panel === 'sounds' ? null : 'sounds')} />
+          <Tile
+            icon={<GraduationCap />}
+            label="Songs"
+            on={panel === 'songs'}
+            active={!!song}
+            onClick={() => setPanel(panel === 'songs' ? null : 'songs')}
+            title="Learn songs with falling notes"
+          />
           {!kit && (
-            <Tile icon={<Footprints />} label="Sustain" active={live.sustain} onClick={() => setSustain(!live.sustain)} title="Sustain pedal (hold Space)" />
+            <Tile
+              icon={<Footprints />}
+              label="Sustain"
+              active={live.sustain}
+              onClick={() => setSustain(!live.sustain)}
+              title="Sustain pedal (hold Space)"
+            />
           )}
-          <Tile icon={<Settings2 />} label="Settings" on={settings.bigToolbar} onClick={() => settings.update({ bigToolbar: !settings.bigToolbar })} />
+          <Tile
+            icon={<Settings2 />}
+            label="Settings"
+            on={settings.bigToolbar}
+            onClick={() => settings.update({ bigToolbar: !settings.bigToolbar })}
+          />
           <Tile icon={<CircleDot />} label="Recorder" on={panel === 'rec'} onClick={() => setPanel(panel === 'rec' ? null : 'rec')} />
-          <Tile icon={<Timer />} label="Metronome" on={panel === 'metro'} active={metro.on} onClick={() => setPanel(panel === 'metro' ? null : 'metro')} />
+          <Tile
+            icon={<Timer />}
+            label="Metronome"
+            on={panel === 'metro'}
+            active={metro.on}
+            onClick={() => setPanel(panel === 'metro' ? null : 'metro')}
+          />
           <Tile icon={<Waves />} label="Effects" on={panel === 'fx'} onClick={() => setPanel(panel === 'fx' ? null : 'fx')} />
           <div className="divider-v" />
           {fs.supported && (
-            <Tile icon={fs.on ? <Minimize /> : <Maximize />} label={fs.on ? 'Exit full' : 'Full screen'} active={fs.on} onClick={fs.toggle} />
+            <Tile
+              icon={fs.on ? <Minimize /> : <Maximize />}
+              label={fs.on ? 'Exit full' : 'Full screen'}
+              active={fs.on}
+              onClick={fs.toggle}
+            />
           )}
-          <Tile icon={<LayoutDashboard />} label="Workspace" onClick={() => settings.update({ playLayout: 'workspace' })} title="Switch to the full workspace layout" />
+          <Tile
+            icon={<LayoutDashboard />}
+            label="Workspace"
+            onClick={() => settings.update({ playLayout: 'workspace' })}
+            title="Switch to the full workspace layout"
+          />
         </div>
 
         {panel === 'sounds' && (
@@ -353,6 +407,13 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
                 setPanel(null);
               }}
             />
+          </div>
+        )}
+        {panel === 'songs' && (
+          <div className="bp-pop bp-pop-songs">
+            <h4>Learn a song</h4>
+            <p className="muted">Notes fall onto the keys. In Wait mode the song pauses until you press the right ones.</p>
+            <SongPicker />
           </div>
         )}
         {panel === 'rec' && (
@@ -376,7 +437,14 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
                 <MiniStepper value={metro.bpm} min={30} max={240} onChange={(v) => setMetronome({ bpm: v })} />
                 <span className="faint mono">BPM</span>
               </div>
-              <Range value={metro.bpm} min={30} max={240} step={1} onChange={(v) => setMetronome({ bpm: Math.round(v) })} ariaLabel="Tempo" />
+              <Range
+                value={metro.bpm}
+                min={30}
+                max={240}
+                step={1}
+                onChange={(v) => setMetronome({ bpm: Math.round(v) })}
+                ariaLabel="Tempo"
+              />
               <div className="row">
                 <span className="field-label">Beats</span>
                 <Segmented
@@ -395,8 +463,26 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
           <div className="bp-pop bp-pop-right">
             <h4>Effects</h4>
             <div className="bp-fx">
-              <Knob size={44} value={live.reverb} min={0} max={1} defaultValue={0.18} label="Reverb" format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => live.set({ reverb: v })} />
-              <Knob size={44} value={live.volume} min={-30} max={6} defaultValue={0} label="Volume" format={(v) => `${v.toFixed(0)} dB`} onChange={(v) => live.set({ volume: v })} />
+              <Knob
+                size={44}
+                value={live.reverb}
+                min={0}
+                max={1}
+                defaultValue={0.18}
+                label="Reverb"
+                format={(v) => `${Math.round(v * 100)}%`}
+                onChange={(v) => live.set({ reverb: v })}
+              />
+              <Knob
+                size={44}
+                value={live.volume}
+                min={-30}
+                max={6}
+                defaultValue={0}
+                label="Volume"
+                format={(v) => `${v.toFixed(0)} dB`}
+                onChange={(v) => live.set({ volume: v })}
+              />
             </div>
             {!kit && (
               <label className="field">
@@ -413,6 +499,8 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
           </div>
         )}
       </div>
+
+      {song && <LessonBar onPickSong={() => setPanel('songs')} />}
 
       {settings.bigToolbar && (
         <div className="bp-settings">
@@ -432,7 +520,11 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
                     { value: 'custom', label: 'Custom', title: 'Your own keys' },
                   ]}
                 />
-                <button className={`btn icon ${editing ? 'on' : ''}`} onClick={() => (editing ? setEditing(false) : startEditing())} title="Edit custom keys">
+                <button
+                  className={`btn icon ${editing ? 'on' : ''}`}
+                  onClick={() => (editing ? setEditing(false) : startEditing())}
+                  title="Edit custom keys"
+                >
                   <Pencil />
                 </button>
               </div>
@@ -528,46 +620,57 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
         </div>
       )}
 
-      <div className="bp-stage">
-        <div className={`bp-now ${held.length ? 'live' : ''}`}>
-          {shown.length ? (
-            <>
-              <div className="bp-now-main">{kit ? shown.map((m) => dl.get(m) ?? m).join(' ') : chord ?? (shown.length === 1 ? nameOf(shown[0], naming === 'solfege' ? 'solfege' : 'cde') : '')}</div>
-              {!kit && (
-                <div className="bp-now-notes">
-                  {shown.map((m) => (
-                    <span key={m} className="tag mono">
-                      {nameOf(m, naming === 'solfege' ? 'solfege' : 'cde')}
-                    </span>
-                  ))}
+      {song && !kit ? (
+        <div className="bp-stage bp-fall">
+          <FallingNotes low={low} high={high} />
+          <LessonOverlay />
+        </div>
+      ) : (
+        <div className="bp-stage">
+          <div className={`bp-now ${held.length ? 'live' : ''}`}>
+            {shown.length ? (
+              <>
+                <div className="bp-now-main">
+                  {kit
+                    ? shown.map((m) => dl.get(m) ?? m).join(' ')
+                    : (chord ?? (shown.length === 1 ? nameOf(shown[0], naming === 'solfege' ? 'solfege' : 'cde') : ''))}
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="bp-idle">
-              <div className="bp-idle-title">{displayName(live.instrumentId)}</div>
-              <div className="bp-idle-line">{kit ? 'Tap the pads or use the keys shown on them' : keymapHint[settings.keymap]}</div>
-              <div className="bp-idle-line faint">
                 {!kit && (
-                  <>
-                    Hold <kbd>Space</kbd> to sustain · <kbd>←</kbd> <kbd>→</kbd> octave ·{' '}
-                  </>
+                  <div className="bp-now-notes">
+                    {shown.map((m) => (
+                      <span key={m} className="tag mono">
+                        {nameOf(m, naming === 'solfege' ? 'solfege' : 'cde')}
+                      </span>
+                    ))}
+                  </div>
                 )}
-                <kbd>↑</kbd> <kbd>↓</kbd> velocity
+              </>
+            ) : (
+              <div className="bp-idle">
+                <div className="bp-idle-title">{displayName(live.instrumentId)}</div>
+                <div className="bp-idle-line">{kit ? 'Tap the pads or use the keys shown on them' : keymapHint[settings.keymap]}</div>
+                <div className="bp-idle-line faint">
+                  {!kit && (
+                    <>
+                      Hold <kbd>Space</kbd> to sustain · <kbd>←</kbd> <kbd>→</kbd> octave ·{' '}
+                    </>
+                  )}
+                  <kbd>↑</kbd> <kbd>↓</kbd> velocity
+                </div>
               </div>
+            )}
+            <div className="bp-status mono">
+              {!kit && <span>Oct {live.octave > 0 ? `+${live.octave}` : live.octave}</span>}
+              {!kit && live.transpose !== 0 && <span>Trn {live.transpose > 0 ? `+${live.transpose}` : live.transpose}</span>}
+              <span>Vel {Math.round(live.velocity * 127)}</span>
+              {!kit && <span className={live.sustain ? 'hot' : ''}>Sus {live.sustain ? 'on' : 'off'}</span>}
+              {metro.on && <span className="hot">♩ {metro.bpm}</span>}
             </div>
-          )}
-          <div className="bp-status mono">
-            {!kit && <span>Oct {live.octave > 0 ? `+${live.octave}` : live.octave}</span>}
-            {!kit && live.transpose !== 0 && <span>Trn {live.transpose > 0 ? `+${live.transpose}` : live.transpose}</span>}
-            <span>Vel {Math.round(live.velocity * 127)}</span>
-            {!kit && <span className={live.sustain ? 'hot' : ''}>Sus {live.sustain ? 'on' : 'off'}</span>}
-            {metro.on && <span className="hot">♩ {metro.bpm}</span>}
           </div>
         </div>
-      </div>
+      )}
 
-      <div className={`bp-keys ${kit ? 'is-kit' : ''}`} ref={keysRef}>
+      <div className={`bp-keys ${kit ? 'is-kit' : ''} ${song && !kit ? 'with-song' : ''}`} ref={keysRef}>
         {kit ? (
           <DrumPads skin={settings.skins.drums} active={live.active} onDown={(m) => noteOn(m)} onUp={(m) => noteOff(m)} keyLabels={dl} />
         ) : (
@@ -589,6 +692,7 @@ export function BigPiano({ onPick, goStudio }: { onPick: (id: string) => void; g
             height={Math.max(180, keysBox.height)}
             renderLabel={renderLabel}
             marked={bindSel !== null && editing ? { [bindSel]: true } : undefined}
+            hinted={song ? lessonHint : undefined}
           />
         )}
       </div>

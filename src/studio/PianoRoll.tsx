@@ -9,6 +9,8 @@ import { DRUM_PIECES } from '../lib/instruments';
 import { inScale, isBlack, noteName, NOTE_NAMES, pitchClass, SCALES } from '../lib/notes';
 import { Range } from '../components/ui';
 import { AutomationEditor } from './AutomationEditor';
+import { useMobile } from '../lib/useMobile';
+import { attachPinch, multiTouch } from '../lib/pinch';
 
 const VEL_H = 64;
 
@@ -120,7 +122,37 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
     for (let m = 108; m >= 21; m--) out.push(m);
     return out;
   }, [drums]);
-  const ROW_H = drums ? 26 : 14;
+  // taller rows on phones so a fingertip hits one note
+  const mobile = useMobile();
+  const ROW_H = drums ? (mobile ? 34 : 26) : mobile ? 22 : 14;
+  const createdAt = useRef(0);
+  const holdTimer = useRef(0);
+
+  // two fingers zoom the grid; a note the first finger just drew is taken back
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    return attachPinch(
+      el,
+      (f) => {
+        let applied = f;
+        setPpb((v) => {
+          const next = Math.max(24, Math.min(260, v * f));
+          applied = next / v;
+          return next;
+        });
+        return applied;
+      },
+      () => {
+        drag.current = null;
+        clearTimeout(holdTimer.current);
+        if (Date.now() - createdAt.current < 400) {
+          createdAt.current = 0;
+          useStudio.getState().undo();
+        }
+      },
+    );
+  }, []);
   const KEYW = drums ? 104 : 64;
   const W = len * ppb;
   const H = rows.length * ROW_H;
@@ -174,7 +206,7 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
   const roundB = (b: number) => (snap > 0 ? Math.round(b / snap) * snap : b);
 
   const onGridDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || multiTouch()) return;
     mainRef.current?.focus({ preventScroll: true });
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const { beat, row, x, y } = posAt(e.clientX, e.clientY);
@@ -193,6 +225,7 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
         if (step >= len) return;
         setNotes((ns) => [...ns, { id: uid(), pitch, start: step, dur: snap || 0.25, vel: 0.85 }], false);
         audition(track.id, pitch);
+        createdAt.current = Date.now();
         drag.current = { mode: 'paint', x0: e.clientX, y0: e.clientY, orig: [], moved: false };
       }
       return;
@@ -209,6 +242,18 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
       const orig = notes.filter((n) => ids.includes(n.id));
       drag.current = { mode: resize ? 'resize' : 'move', x0: e.clientX, y0: e.clientY, orig, anchorId: noteId, moved: false, lastPitch: note.pitch };
       if (!resize) audition(track.id, note.pitch);
+      // touch: hold a note still to delete it
+      if (e.pointerType === 'touch') {
+        const d = drag.current;
+        clearTimeout(holdTimer.current);
+        holdTimer.current = window.setTimeout(() => {
+          if (drag.current !== d || d.moved) return;
+          drag.current = null;
+          setNotes((ns) => ns.filter((n) => n.id !== noteId));
+          select([]);
+          navigator.vibrate?.(15);
+        }, 550);
+      }
       return;
     }
 
@@ -226,6 +271,7 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
     setNotes((ns) => [...ns, n], false);
     select([n.id]);
     audition(track.id, n.pitch);
+    createdAt.current = Date.now();
     drag.current = { mode: 'move', x0: e.clientX, y0: e.clientY, orig: [n], anchorId: n.id, moved: true, lastPitch: n.pitch };
   };
 
@@ -289,6 +335,7 @@ function PianoRoll({ track, pattern, channels }: { track: Track; pattern: Patter
   };
 
   const onGridUp = () => {
+    clearTimeout(holdTimer.current);
     const d = drag.current;
     drag.current = null;
     if (d?.mode === 'marquee' && marquee) {

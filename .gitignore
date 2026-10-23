@@ -7,3 +7,4 @@ public/audio
 .DS_Store
 .vercel
 *.tsbuildinfo
+.taste-skill
