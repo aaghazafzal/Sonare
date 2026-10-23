@@ -17,8 +17,8 @@ Drop a new folder into `Audio/` and re-run to add an instrument, then `npm run c
 
 ## What's in it
 
-- **Home** — landing page with a playable keyboard, instrument samples to hear, a searchable list of what the app does
-  and a "new project" dialog that opens the studio.
+- **Home** — landing page built from the app's own parts: a playable piano with a falling-notes demo, every instrument
+  family to hear, the song list, a step sequencer you can play, live theme switching and a "new project" dialog.
 - **Play** — instrument browser with search; keyboard (61/76/88 keys, 88-key navigator, velocity by touch position,
   glissando, chord mode), guitar/bass/violin necks (real fret spacing, tunings, chord strum), drum kit + pad grid,
   flute with live fingering chart + pan flute, marimba-style mallets. Computer keyboard, mouse/touch and Web MIDI
@@ -56,8 +56,7 @@ Drop a new folder into `Audio/` and re-run to add an instrument, then `npm run c
 
 ## Assets
 
-All instrument graphics are drawn in SVG/CSS so they follow the theme and skin settings. The home page photographs
-(`public/home/`) are William P. Gottlieb's jazz portraits from the Library of Congress, public domain, via Wikimedia
-Commons. App icons and the social image are drawn by `scripts/make-images.py`.
+All instrument graphics are drawn in SVG/CSS so they follow the theme and skin settings — no third-party images. App
+icons and the social image are drawn by `scripts/make-images.py`.
 Fonts are self-hosted via Fontsource (SIL OFL). Samples come from the `Audio/` folder; before publishing the site,
 confirm each sample set's licence (many look like the CC-BY FluidR3 / tonejs-instruments sets, which need attribution).

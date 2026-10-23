@@ -1,112 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight, Check, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import * as Tone from 'tone';
-import { Keyboard } from '../components/instruments/Keyboard';
+import { Keyboard, keyGeometry } from '../components/instruments/Keyboard';
 import { InstallButton } from '../components/ui';
 import { noteOff, noteOn, useLive, liveStrip } from '../audio/live';
 import { Voice, ensureAudio } from '../audio/engine';
 import { pianoKeyLabels } from '../audio/input';
 import { useSettings } from '../theme/settings';
-import { setLesson } from '../learn/lesson';
-import { SONGS } from '../learn/songs';
+import { THEME_PRESETS } from '../theme/presets';
+import { openSong, setLesson } from '../learn/lesson';
+import { LEVEL_LABEL, SONGS, songById } from '../learn/songs';
 import { fromTemplate } from '../studio/store';
 import { startProject } from '../studio/projects';
-import { INSTRUMENTS, KITS } from '../lib/instruments';
+import { DEFAULT_INSTRUMENT, FAMILY_LABELS, FAMILY_ORDER, INSTRUMENTS, KITS, displayName } from '../lib/instruments';
 import { useMobile } from '../lib/useMobile';
-import { noteName } from '../lib/notes';
 
-/* -------------------------------------------------------------- content */
-
-type Phrase = [midi: number, beat: number, beats: number][];
-
-const EXHIBITS: {
-  id: string;
-  name: string;
-  text: string;
-  photo: string;
-  caption: string;
-  tone: string;
-  bpm: number;
-  phrase: Phrase;
-}[] = [
-  {
-    id: 'jazz-piano',
-    name: 'Jazz Piano',
-    text: 'One of 13 pianos, from a concert grand to a honky-tonk upright.',
-    photo: '/home/piano-tatum.jpg',
-    caption: 'Art Tatum at the Vogue Room, New York, 1948',
-    tone: 'a',
-    bpm: 96,
-    phrase: [
-      [50, 0, 2], [53, 0, 2], [57, 0, 2], [60, 0, 2], [64, 0, 2],
-      [43, 2, 2], [53, 2, 2], [57, 2, 2], [59, 2, 2], [64, 2, 2],
-      [48, 4, 4], [52, 4, 4], [55, 4, 4], [59, 4, 4], [62, 4, 4],
-    ],
-  },
-  {
-    id: 'jazz-guitar',
-    name: 'Jazz Guitar',
-    text: 'Fourteen guitars and plucked strings — nylon, steel, oud, sitar, koto.',
-    photo: '/home/guitar-reinhardt.jpg',
-    caption: 'Django Reinhardt, New York, 1946',
-    tone: 'b',
-    bpm: 132,
-    phrase: [
-      [55, 0, 1], [59, 1, 1], [62, 2, 1], [66, 3, 1], [69, 4, 1.5], [67, 5.5, 0.5], [66, 6, 1], [64, 7, 1], [62, 8, 3],
-    ],
-  },
-  {
-    id: 'kit:standard-kit',
-    name: 'Standard Kit',
-    text: 'Six drum kits on the pads, the keyboard and the step sequencer.',
-    photo: '/home/drums-krupa.jpg',
-    caption: 'Gene Krupa, around 1946',
-    tone: 'c',
-    bpm: 112,
-    phrase: [
-      [36, 0, 0.5], [51, 0, 0.5], [51, 1, 0.5], [38, 1, 0.5], [51, 1.66, 0.3], [51, 2, 0.5], [36, 2, 0.5],
-      [51, 3, 0.5], [38, 3, 0.5], [51, 3.66, 0.3], [36, 4, 0.5], [51, 4, 0.5], [38, 5, 0.5], [51, 5, 0.5],
-      [38, 5.5, 0.3], [38, 5.75, 0.3], [49, 6, 1], [36, 6, 1],
-    ],
-  },
-  {
-    id: 'muted-trumpet',
-    name: 'Muted Trumpet',
-    text: 'Eight brass and ten reeds, with a breath of room around them.',
-    photo: '/home/band-gillespie.jpg',
-    caption: 'Dizzy Gillespie and his orchestra, New York, 1946–48',
-    tone: 'd',
-    bpm: 150,
-    phrase: [
-      [67, 0, 0.5], [70, 0.5, 0.5], [72, 1, 0.5], [74, 1.5, 0.5], [75, 2, 1], [74, 3, 0.5], [72, 3.5, 0.5], [70, 4, 0.5], [67, 4.5, 2.5],
-    ],
-  },
-  {
-    id: 'voice-oohs',
-    name: 'Voice Oohs',
-    text: 'Choirs to sing over, and a microphone input for your own voice.',
-    photo: '/home/voice-holiday.jpg',
-    caption: 'Billie Holiday at the Downbeat, New York, 1947',
-    tone: 'e',
-    bpm: 70,
-    phrase: [
-      [57, 0, 2], [60, 0, 2], [64, 0, 2], [53, 2, 2], [57, 2, 2], [60, 2, 2], [52, 4, 3], [55, 4, 3], [60, 4, 3],
-    ],
-  },
-];
-
-const COMMANDS: { name: string; text: string; keys?: string[]; go: () => void }[] = [
-  { name: 'Play the piano', text: 'Q to P and Z to slash are white keys; the row above each is black.', keys: ['Q', 'W', 'E'], go: () => go('play') },
-  { name: 'Hold the sustain pedal', text: 'Hold Space while you play, like the right pedal of a piano.', keys: ['␣'], go: () => go('play') },
-  { name: 'Move up an octave', text: 'Arrow keys move the keyboard; up and down change how hard you play.', keys: ['←', '→'], go: () => go('play') },
-  { name: 'Learn a song', text: `${SONGS.length} classics with falling notes that wait for you.`, go: () => learn() },
-  { name: 'Program a beat', text: 'The channel rack: sixteen steps per bar, velocity on every step.', keys: ['F6'], go: () => go('studio') },
-  { name: 'Write a melody', text: 'The piano roll, with scale highlighting and ghost notes from other channels.', keys: ['F7'], go: () => go('studio') },
-  { name: 'Mix with effects', text: 'Ten insert effects per channel, sends, and automation clips.', keys: ['F9'], go: () => go('studio') },
-  { name: 'Record a vocal', text: 'Arm an audio channel and sing over your beat; takes land on the playlist.', go: () => go('studio') },
-  { name: 'Export the song', text: 'WAV, MP3, one file per channel, or MIDI for another DAW.', go: () => go('studio') },
-  { name: 'Change every colour', text: 'Eight themes, seven fonts, and a colour picker for every part of the screen.', go: () => go('settings') },
-];
+/* ------------------------------------------------------------ helpers */
 
 const go = (r: 'play' | 'studio' | 'settings') => {
   location.hash = `#/${r}`;
@@ -117,216 +26,471 @@ const learn = () => {
   go('play');
 };
 
-/* -------------------------------------------------------------- sounds */
-
+/** One shared voice for every "hear it" on this page, so it never touches the live instrument. */
 let preview: Voice | null = null;
-async function playPhrase(id: string, bpm: number, phrase: Phrase) {
+async function previewVoice(id: string) {
   await ensureAudio();
   preview ??= new Voice(liveStrip.input);
   await preview.setInstrument(id);
-  const beat = 60 / bpm;
-  const t0 = Tone.now() + 0.05;
-  for (const [m, b, d] of phrase) preview.play(m, d * beat * 0.95, t0 + b * beat, 0.75);
-  return (Math.max(...phrase.map(([, b, d]) => b + d)) * beat + 0.4) * 1000;
+  return preview;
 }
 
-/* ------------------------------------------------------------ sections */
+/** Fades sections in as they scroll into view (content stays visible without script). */
+function useReveal(root: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    el.classList.add('js');
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }),
+      { root: el, threshold: 0.12 },
+    );
+    el.querySelectorAll('.rv').forEach((n) => io.observe(n));
+    return () => io.disconnect();
+  }, [root]);
+}
 
-function HeroKeys() {
-  const active = useLive((s) => s.active);
+/* ------------------------------------------- hero: the big piano, live */
+
+const DEMO = (() => {
+  const s = songById('ode')!;
+  const notes = s.notes.filter((n) => n.hand === 'R' && n.start < 32);
+  return { notes, bpm: 104, length: 32 };
+})();
+const LOW = 53;
+const HIGH = 74;
+const LEAD = 2.5; // beats visible above the keys
+
+function HeroWindow() {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const live = useLive((s) => s.active);
   const octave = useLive((s) => s.octave);
   const keymap = useSettings((s) => s.keymap);
   const skin = useSettings((s) => s.skins.keyboard);
-  const labels = useMemo(() => pianoKeyLabels(octave, keymap), [octave, keymap]);
-  // phones have no letter keys to print on the piano
   const touch = !!useMobile();
-  return (
-    <div className="home-keys">
-      <Keyboard
-        low={60}
-        high={83}
-        active={active}
-        onDown={(m, v) => noteOn(m, v)}
-        onUp={(m) => noteOff(m)}
-        skin={skin}
-        showCase={false}
-        className="kb-flat"
-        height={150}
-        renderLabel={(m, black) =>
-          touch ? (
-            m % 12 === 0 && <span className="wk-name">{noteName(m)}</span>
-          ) : (
-            labels.get(m) && <span className={`keycap ${black ? 'on-black' : ''}`}>{labels.get(m)}</span>
-          )
+  const [sound, setSound] = useState(false);
+  const [running, setRunning] = useState(true);
+  const [demo, setDemo] = useState<Record<number, true>>({});
+  const soundRef = useRef(sound);
+  soundRef.current = sound;
+  const labels = useMemo(() => pianoKeyLabels(octave, keymap), [octave, keymap]);
+  const geo = useMemo(() => keyGeometry(LOW, HIGH), []);
+  const active = useMemo(() => ({ ...demo, ...live }), [demo, live]);
+
+  useEffect(() => {
+    const c = canvas.current;
+    if (!c || !running) return;
+    const ctx = c.getContext('2d')!;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const beatMs = 60000 / DEMO.bpm;
+    const t0 = performance.now() - (still ? 6 * beatMs : 0);
+    let raf = 0;
+    let lastBeat = -1;
+    let key = '';
+    let visible = true;
+    const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
+    io.observe(c);
+    const css = (n: string) => getComputedStyle(c).getPropertyValue(n).trim();
+    const colours = { note: css('--primary'), grid: css('--border'), text: css('--on-primary') };
+
+    const draw = (now: number) => {
+      raf = requestAnimationFrame(draw);
+      if (!visible) return;
+      const beat = ((now - t0) / beatMs) % DEMO.length;
+      const dpr = window.devicePixelRatio || 1;
+      const W = c.clientWidth;
+      const H = c.clientHeight;
+      if (c.width !== Math.round(W * dpr)) c.width = Math.round(W * dpr);
+      if (c.height !== Math.round(H * dpr)) c.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      const ppb = H / LEAD;
+      ctx.fillStyle = colours.grid;
+      for (const [m, g] of geo) if (m % 12 === 0) ctx.fillRect(Math.round(g.left * W), 0, 1, H);
+      for (let b = Math.ceil(beat / 4) * 4; b < beat + LEAD + 4; b += 4) ctx.fillRect(0, Math.round(H - (b - beat) * ppb), W, 1);
+
+      const on: number[] = [];
+      ctx.font = `600 11px ${css('--font-ui') || 'sans-serif'}`;
+      ctx.textAlign = 'center';
+      for (const loop of [0, DEMO.length]) {
+        for (const n of DEMO.notes) {
+          const start = n.start + loop;
+          const yb = H - (start - beat) * ppb;
+          const yt = H - (start + n.dur - beat) * ppb;
+          if (yb < 0 || yt > H) continue;
+          const g = geo.get(n.pitch);
+          if (!g) continue;
+          const sounding = beat >= start && beat < start + n.dur;
+          if (sounding) on.push(n.pitch);
+          const x = g.left * W + 2;
+          const w = g.width * W - 4;
+          ctx.globalAlpha = sounding ? 1 : 0.85;
+          ctx.fillStyle = colours.note;
+          ctx.beginPath();
+          ctx.roundRect(x, yt + 1, w, Math.max(6, yb - yt - 2), 4);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          if (yb - yt > 22 && w > 16) {
+            ctx.fillStyle = colours.text;
+            ctx.fillText(touch ? '' : (labels.get(n.pitch)?.toUpperCase() ?? ''), x + w / 2, Math.min(H - 6, yb - 7));
+          }
         }
-      />
+      }
+
+      // the notes that land this frame
+      const whole = Math.floor(beat * 4);
+      if (whole !== lastBeat) {
+        lastBeat = whole;
+        if (soundRef.current)
+          for (const n of DEMO.notes)
+            if (Math.floor(n.start * 4) === whole && preview) preview.play(n.pitch, (n.dur * beatMs) / 1000, Tone.now(), 0.6);
+      }
+      const k = on.join();
+      if (k !== key) {
+        key = k;
+        setDemo(Object.fromEntries(on.map((m) => [m, true])));
+      }
+    };
+    raf = requestAnimationFrame(draw);
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+      setDemo({});
+    };
+  }, [running, geo, labels, touch]);
+
+  const toggleSound = async () => {
+    if (!sound) await previewVoice(DEFAULT_INSTRUMENT);
+    setSound(!sound);
+  };
+
+  return (
+    <div className="h-window" data-ui>
+      <div className="h-window-bar">
+        <span className="h-window-title">{displayName(DEFAULT_INSTRUMENT)}</span>
+        <span className="h-window-song">Ode to Joy · Watch</span>
+        <div className="spacer" />
+        <button className="btn sm ghost" onClick={() => setRunning(!running)} aria-label={running ? 'Pause the demo' : 'Play the demo'}>
+          {running ? <Pause /> : <Play />}
+        </button>
+        <button className={`btn sm ${sound ? 'on' : ''}`} onClick={() => void toggleSound()}>
+          {sound ? <Volume2 /> : <VolumeX />} {sound ? 'Sound on' : 'Sound off'}
+        </button>
+      </div>
+      <canvas ref={canvas} className="h-window-fall" aria-hidden />
+      <div className="h-window-keys">
+        <Keyboard
+          low={LOW}
+          high={HIGH}
+          active={active}
+          onDown={(m, v) => noteOn(m, v)}
+          onUp={(m) => noteOff(m)}
+          skin={skin}
+          showCase={false}
+          className="kb-flat"
+          height={touch ? 130 : 170}
+          renderLabel={(m, black) =>
+            touch
+              ? m % 12 === 0 && <span className="wk-name">C{m / 12 - 1}</span>
+              : labels.get(m) && <span className={`keycap ${black ? 'on-black' : ''}`}>{labels.get(m)}</span>
+          }
+        />
+      </div>
+      <p className="h-window-foot">{touch ? 'Tap the keys to play along.' : 'Press the letters printed on the keys to play along.'}</p>
     </div>
   );
 }
 
-function Exhibits({ scroller }: { scroller: React.RefObject<HTMLDivElement | null> }) {
-  const wrap = useRef<HTMLElement>(null);
-  const track = useRef<HTMLDivElement>(null);
-  const [playing, setPlaying] = useState<string | null>(null);
+/* --------------------------------------------------------- instruments */
 
-  // the cards cross the held photograph as the page scrolls
-  useEffect(() => {
-    const sc = scroller.current;
-    const w = wrap.current;
-    const t = track.current;
-    if (!sc || !w || !t) return;
-    const still = window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 760px)');
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      if (still.matches) {
-        t.style.transform = '';
-        return;
-      }
-      const span = w.offsetHeight - sc.clientHeight;
-      const p = Math.max(0, Math.min(1, (sc.scrollTop - w.offsetTop) / Math.max(1, span)));
-      const travel = t.scrollWidth - w.clientWidth + 64;
-      t.style.transform = `translateX(${-p * Math.max(0, travel)}px)`;
-    };
-    const on = () => (raf ||= requestAnimationFrame(update));
-    sc.addEventListener('scroll', on, { passive: true });
-    window.addEventListener('resize', on);
-    update();
-    return () => {
-      sc.removeEventListener('scroll', on);
-      window.removeEventListener('resize', on);
-      cancelAnimationFrame(raf);
-    };
-  }, [scroller]);
+const FAMILIES = FAMILY_ORDER.map((f) => {
+  const items = f === 'drums' ? KITS.map((k) => ({ id: `kit:${k.id}`, name: k.name })) : INSTRUMENTS.filter((i) => i.family === f);
+  return { id: f, label: FAMILY_LABELS[f], items };
+}).filter((f) => f.items.length);
 
-  const play = async (e: (typeof EXHIBITS)[number]) => {
-    setPlaying(e.id);
-    const ms = await playPhrase(e.id, e.bpm, e.phrase);
-    setTimeout(() => setPlaying((p) => (p === e.id ? null : p)), ms);
-  };
-
-  return (
-    <section className="home-exhibits" ref={wrap} aria-labelledby="exhibits-h">
-      <div className="home-exhibits-stage">
-        <img className="home-exhibits-ground" src="/home/band-gillespie.jpg" alt="" width={1100} height={823} loading="lazy" />
-        <h2 id="exhibits-h" className="home-h2 home-exhibits-title rv">
-          Real recordings,
-          <br />
-          not beeps
-        </h2>
-        <div className="home-exhibits-track" ref={track}>
-          {EXHIBITS.map((e) => (
-            <article key={e.id} className={`home-card tone-${e.tone}`}>
-              <figure>
-                <img src={e.photo} alt={e.caption} width={1000} height={1100} loading="lazy" />
-                <figcaption>{e.caption}</figcaption>
-              </figure>
-              <div className="home-card-panel">
-                <div>
-                  <h3>{e.name}</h3>
-                  <p>{e.text}</p>
-                </div>
-                <button className={`home-play ${playing === e.id ? 'on' : ''}`} onClick={() => void play(e)} aria-label={`Hear the ${e.name}`}>
-                  <Play size={16} /> {playing === e.id ? 'Playing' : 'Hear it'}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+function phraseFor(family: string, voice: Voice) {
+  const t = Tone.now() + 0.05;
+  if (family === 'drums') {
+    const groove: [number, number][] = [
+      [36, 0], [42, 0], [42, 0.5], [38, 1], [42, 1], [42, 1.5], [36, 2], [36, 2.5], [42, 2], [38, 3], [42, 3], [46, 3.5],
+    ];
+    for (const [m, b] of groove) voice.play(m, 0.2, t + b * 0.3, 0.85);
+    return 1500;
+  }
+  const base = family === 'bass' ? 36 : family === 'percussion' || family === 'mallets' ? 72 : 60;
+  const notes = [0, 4, 7, 12, 7, 4, 0];
+  notes.forEach((d, i) => voice.play(base + d, 0.3, t + i * 0.22, 0.7));
+  voice.play(base, 1, t + notes.length * 0.22, 0.6);
+  voice.play(base + 4, 1, t + notes.length * 0.22, 0.6);
+  voice.play(base + 7, 1, t + notes.length * 0.22, 0.6);
+  return 2700;
 }
 
-function Commands() {
-  const [q, setQ] = useState('');
-  const [sel, setSel] = useState(0);
-  const list = COMMANDS.filter((c) => (c.name + ' ' + c.text).toLowerCase().includes(q.trim().toLowerCase()));
-  const cur = Math.min(sel, Math.max(0, list.length - 1));
-  const onKey = (e: ReactKeyboardEvent) => {
-    // keep the piano from playing while typing here
-    e.stopPropagation();
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSel((cur + 1) % Math.max(1, list.length));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSel((cur - 1 + list.length) % Math.max(1, list.length));
-    } else if (e.key === 'Enter') list[cur]?.go();
+function Instruments() {
+  const [playing, setPlaying] = useState<string | null>(null);
+  const hear = async (f: (typeof FAMILIES)[number]) => {
+    setPlaying(f.id);
+    const v = await previewVoice(f.items[0].id);
+    const ms = phraseFor(f.id, v);
+    setTimeout(() => setPlaying((p) => (p === f.id ? null : p)), ms);
+  };
+  const open = (id: string) => {
+    useLive.getState().setInstrument(id);
+    go('play');
   };
   return (
-    <section className="home-commands" aria-labelledby="commands-h" data-ui>
-      <h2 id="commands-h" className="home-h2 rv">
-        Everything it does
-      </h2>
-      <input
-        className="home-search rv"
-        value={q}
-        onChange={(e) => {
-          setQ(e.target.value);
-          setSel(0);
-        }}
-        onKeyDown={onKey}
-        placeholder="Find what you want to do"
-        aria-label="Find what you want to do"
-        aria-controls="home-command-list"
-      />
-      <ul id="home-command-list" className="home-command-list" role="listbox">
-        {list.map((c, i) => (
-          <li key={c.name} role="option" aria-selected={i === cur} className={i === cur ? 'on' : ''} onMouseEnter={() => setSel(i)}>
-            <button onClick={c.go} onFocus={() => setSel(i)}>
-              <span className="home-command-name">{c.name}</span>
-              {c.keys && (
-                <span className="home-caps" aria-hidden>
-                  {c.keys.map((k) => (
-                    <kbd key={k}>{k}</kbd>
-                  ))}
-                </span>
-              )}
+    <section className="h-section h-split" aria-labelledby="inst-h">
+      <div className="h-copy rv">
+        <h2 id="inst-h">Every sound is a real recording</h2>
+        <p>
+          {INSTRUMENTS.length} instruments and {KITS.length} drum kits, sampled note by note — from a concert grand to an oud, a
+          sitar, a choir and a tuba. Each one has its own playing surface: a keyboard, a guitar neck, drum pads, a flute with
+          fingerings.
+        </p>
+        <a className="btn primary lg" href="#/play">
+          Browse all instruments <ArrowRight />
+        </a>
+      </div>
+      <ul className="h-families rv" data-ui>
+        {FAMILIES.map((f) => (
+          <li key={f.id}>
+            <button className="h-family-name" onClick={() => open(f.items[0].id)} title={`Open ${f.items[0].name}`}>
+              <b>{f.label}</b>
+              <span>{f.items.slice(0, 3).map((i) => i.name.replace(/ \(.*\)/, '')).join(', ')}</span>
             </button>
-            {i === cur && <p>{c.text}</p>}
+            <span className="h-family-count">{f.items.length}</span>
+            <button className={`btn sm icon ${playing === f.id ? 'on' : ''}`} onClick={() => void hear(f)} aria-label={`Hear ${f.label}`}>
+              <Play />
+            </button>
           </li>
         ))}
-        {!list.length && <li className="home-command-none">Nothing matches “{q}”.</li>}
       </ul>
     </section>
   );
 }
 
-function Ways() {
+/* ---------------------------------------------------------------- learn */
+
+function Learn() {
+  const best = useMemo(() => {
+    try {
+      return (JSON.parse(localStorage.getItem('sonare.lesson') ?? '{}').state?.best ?? {}) as Record<string, number>;
+    } catch {
+      return {};
+    }
+  }, []);
+  const start = (id: string) => {
+    useSettings.getState().update({ playLayout: 'big' });
+    openSong(id);
+    go('play');
+  };
   return (
-    <section className="home-ways" aria-labelledby="ways-h">
-      <h2 id="ways-h" className="home-h2 rv">
-        Three ways in
-      </h2>
-      <figure className="home-way way-1 rv">
-        <img src="/home/piano-williams.jpg" alt="Mary Lou Williams at the piano, New York, around 1946" width={826} height={1100} loading="lazy" />
-      </figure>
-      <p className="home-way-text text-1 rv">
-        <b>Open it and play.</b> Nothing to sign up for or install. Your letters are piano keys: Q to P and Z to slash are the white keys, the
-        row above each holds the black ones. A MIDI keyboard works too, and so does a touch screen.
-      </p>
-      <figure className="home-way way-2 rv">
-        <img src="/home/voice-holiday.jpg" alt="Billie Holiday singing at the Downbeat club, New York, 1947" width={1054} height={1100} loading="lazy" />
-      </figure>
-      <p className="home-way-text text-2 rv">
-        <b>When a song catches you,</b> pick it from {SONGS.length} classics — {SONGS.slice(4, 8).map((s) => s.title).join(', ')}. Notes fall
-        onto the keys and wait until you press them. Slow it to a third of the speed, then bring it back up.
-      </p>
-      <figure className="home-way way-3 rv">
-        <img src="/home/drums-krupa.jpg" alt="Gene Krupa at his drum kit, around 1946" width={862} height={1100} loading="lazy" />
-      </figure>
-      <p className="home-way-text text-3 rv">
-        <b>When you have an idea,</b> open the studio: drums in the step sequencer, chords in the piano roll, your voice on its own track and
-        effects on the mixer. Export a WAV or an MP3 when it is done.
-      </p>
+    <section className="h-section h-split h-split-rev" aria-labelledby="learn-h">
+      <div className="h-songs rv" data-ui>
+        <div className="h-panel-bar">
+          <b>Songs</b>
+          <span className="faint">{SONGS.length} to learn</span>
+        </div>
+        {SONGS.slice(0, 7).map((s) => (
+          <button key={s.id} className="h-song" onClick={() => start(s.id)}>
+            <span className="h-song-main">
+              <b>{s.title}</b>
+              <span>
+                {s.composer} · {s.hands.length > 1 ? 'both hands' : 'right hand'}
+              </span>
+            </span>
+            {best[s.id] !== undefined ? (
+              <span className="h-song-best">
+                <Check size={13} /> {best[s.id]}%
+              </span>
+            ) : (
+              <span className={`h-level l${s.level}`}>{LEVEL_LABEL[s.level]}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      <div className="h-copy rv">
+        <h2 id="learn-h">Learn songs key by key</h2>
+        <p>Pick a melody and the notes fall onto the piano, with the right key lit before you need it.</p>
+        <dl className="h-modes">
+          <div>
+            <dt>Watch</dt>
+            <dd>The song plays itself so you can see the shape of it.</dd>
+          </div>
+          <div>
+            <dt>Wait</dt>
+            <dd>Every note stops at the keyboard until you press it. No rush.</dd>
+          </div>
+          <div>
+            <dt>Play</dt>
+            <dd>The song keeps time and scores each note you hit.</dd>
+          </div>
+        </dl>
+        <button className="btn primary lg" onClick={learn}>
+          Learn a song <ArrowRight />
+        </button>
+      </div>
     </section>
   );
 }
 
+/* --------------------------------------------------------------- studio */
+
+const RACK = [
+  { name: 'Kick', midi: 36, steps: [0, 6, 8, 11] },
+  { name: 'Snare', midi: 38, steps: [4, 12] },
+  { name: 'Closed hat', midi: 42, steps: [0, 2, 4, 6, 8, 10, 12, 14] },
+  { name: 'Open hat', midi: 46, steps: [7, 15] },
+];
+const BPM = 92;
+
+function MiniRack() {
+  const [grid, setGrid] = useState(() => RACK.map((r) => Array.from({ length: 16 }, (_, i) => r.steps.includes(i))));
+  const [step, setStep] = useState(-1);
+  const [on, setOn] = useState(false);
+  const gridRef = useRef(grid);
+  gridRef.current = grid;
+
+  useEffect(() => {
+    if (!on) return;
+    let voice: Voice | null = null;
+    let next = 0;
+    let i = 0;
+    let stopped = false;
+    const timers: number[] = [];
+    void previewVoice('kit:standard-kit').then((v) => {
+      if (stopped) return;
+      voice = v;
+      next = Tone.now() + 0.08;
+    });
+    const sixteenth = 60 / BPM / 4;
+    const id = window.setInterval(() => {
+      if (!voice) return;
+      while (next < Tone.now() + 0.12) {
+        const s = i;
+        gridRef.current.forEach((row, r) => row[s] && voice!.play(RACK[r].midi, 0.2, next, s % 4 === 0 ? 0.9 : 0.7));
+        timers.push(window.setTimeout(() => setStep(s), Math.max(0, (next - Tone.now()) * 1000)));
+        i = (i + 1) % 16;
+        next += sixteenth;
+      }
+    }, 25);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+      timers.forEach(clearTimeout);
+      setStep(-1);
+    };
+  }, [on]);
+
+  return (
+    <div className="h-rack rv" data-ui>
+      <div className="h-panel-bar">
+        <button className={`btn sm ${on ? 'on' : 'primary'}`} onClick={() => setOn(!on)}>
+          {on ? <Pause /> : <Play />} {on ? 'Stop' : 'Play beat'}
+        </button>
+        <span className="h-lcd">{BPM} BPM</span>
+        <span className="faint">Pattern 1 · tap a step to change the beat</span>
+      </div>
+      <div className="h-rack-rows">
+        {RACK.map((r, ri) => (
+          <div key={r.name} className="h-rack-row">
+            <span className="h-rack-name">{r.name}</span>
+            <div className="h-steps">
+              {grid[ri].map((v, si) => (
+                <button
+                  key={si}
+                  className={`h-step ${v ? 'on' : ''} ${si === step ? 'now' : ''} ${Math.floor(si / 4) % 2 ? 'alt' : ''}`}
+                  aria-label={`${r.name} step ${si + 1}`}
+                  aria-pressed={v}
+                  onClick={() => setGrid((g) => g.map((row, i) => (i === ri ? row.map((x, j) => (j === si ? !x : x)) : row)))}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const STUDIO_FEATURES = [
+  ['Channel rack', 'Sixteen steps per bar for every drum and instrument, with velocity and swing.'],
+  ['Piano roll', 'Draw melodies and chords with scale highlighting and other channels shown faintly behind.'],
+  ['Playlist', 'Arrange patterns, recordings and automation clips into a whole song.'],
+  ['Mixer', 'EQ, compression, sends and ten insert effects on every channel.'],
+  ['Recording', 'Sing or play over the beat from your microphone, with a count-in.'],
+  ['Export', 'WAV, MP3, one file per channel, or MIDI for another DAW.'],
+];
+
+function Studio() {
+  return (
+    <section className="h-section" aria-labelledby="studio-h">
+      <div className="h-split h-split-top">
+        <div className="h-copy rv">
+          <h2 id="studio-h">A full studio when you have an idea</h2>
+          <p>
+            Built the way FL Studio works, so tutorials you already know still apply — and simple enough that the first beat takes a
+            minute.
+          </p>
+          <a className="btn primary lg" href="#/studio">
+            Open the studio <ArrowRight />
+          </a>
+        </div>
+        <MiniRack />
+      </div>
+      <div className="h-features rv">
+        {STUDIO_FEATURES.map(([t, d]) => (
+          <div key={t}>
+            <h3>{t}</h3>
+            <p>{d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------- themes */
+
+function Themes() {
+  const presetId = useSettings((s) => s.presetId);
+  const apply = useSettings((s) => s.applyPreset);
+  return (
+    <section className="h-section" aria-labelledby="themes-h">
+      <div className="h-copy h-copy-wide rv">
+        <h2 id="themes-h">Make it look like yours</h2>
+        <p>
+          Try a theme — the whole app changes as you click. Every colour, the fonts and the look of each instrument can be changed in{' '}
+          <a href="#/settings">Settings</a>.
+        </p>
+      </div>
+      <div className="h-themes rv">
+        {THEME_PRESETS.map((t) => (
+          <button key={t.id} className={`h-theme ${presetId === t.id ? 'on' : ''}`} onClick={() => apply(t.id)} aria-pressed={presetId === t.id}>
+            <span className="h-theme-swatch" style={{ background: t.colors.bg }}>
+              <i style={{ background: t.colors.panel }} />
+              <i style={{ background: t.colors.primary }} />
+              <i style={{ background: t.colors.secondary }} />
+            </span>
+            <span className="h-theme-name">{t.name}</span>
+            <span className="h-theme-note">{t.note}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- start */
+
 function StartProject() {
-  const [name, setName] = useState('Late night sketch');
-  const [tpl, setTpl] = useState<'hiphop' | 'house'>('hiphop');
+  const [name, setName] = useState('My first beat');
+  const [tpl, setTpl] = useState<'hiphop' | 'house' | 'empty'>('hiphop');
   const [busy, setBusy] = useState(false);
   const create = async () => {
     setBusy(true);
@@ -336,23 +500,22 @@ function StartProject() {
     go('studio');
   };
   return (
-    <section className="home-start" aria-labelledby="start-h">
-      <div className="home-start-words">
-        <h2 id="start-h" className="home-h2-xl">
-          Start a beat
-          <br />
-          right now
-        </h2>
-        <p>It opens in the studio with drums, bass and keys already in place. Everything saves in this browser as you work.</p>
+    <section className="h-section h-start" aria-labelledby="start-h">
+      <div className="h-copy rv">
+        <h2 id="start-h">Start a project now</h2>
+        <p>Nothing to sign up for. Projects save in this browser as you work, and a session file takes them to another device.</p>
+        <div className="h-install">
+          <InstallButton className="btn lg" />
+        </div>
       </div>
       <form
-        className="home-dialog"
+        className="h-dialog rv"
         data-ui
         onSubmit={(e) => {
           e.preventDefault();
           void create();
         }}
-        onKeyDown={(e) => e.stopPropagation()}
+        onKeyDown={(e: ReactKeyboardEvent) => e.stopPropagation()}
       >
         <h3>New project</h3>
         <label className="field">
@@ -364,8 +527,9 @@ function StartProject() {
           <div className="seg" role="radiogroup">
             {(
               [
-                ['hiphop', 'Hip-hop · 88 BPM'],
-                ['house', 'House · 124 BPM'],
+                ['hiphop', 'Hip-hop'],
+                ['house', 'House'],
+                ['empty', 'Empty'],
               ] as const
             ).map(([id, label]) => (
               <button key={id} type="button" role="radio" aria-checked={tpl === id} className={tpl === id ? 'on' : ''} onClick={() => setTpl(id)}>
@@ -374,7 +538,7 @@ function StartProject() {
             ))}
           </div>
         </div>
-        <button className="btn primary home-dialog-go" type="submit" disabled={busy}>
+        <button className="btn primary h-dialog-go" type="submit" disabled={busy}>
           Open in the studio <ArrowRight />
         </button>
       </form>
@@ -385,90 +549,49 @@ function StartProject() {
 /* ----------------------------------------------------------------- page */
 
 export function HomePage() {
-  const scroller = useRef<HTMLDivElement>(null);
-  const mark = useRef<HTMLHeadingElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  useReveal(root);
   const count = INSTRUMENTS.length + KITS.length;
-  const mobile = useMobile();
-
-  // entrances and the wordmark that settles as the first screen leaves
-  useEffect(() => {
-    const sc = scroller.current;
-    if (!sc) return;
-    sc.classList.add('js');
-    const io = new IntersectionObserver(
-      (entries) =>
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('in');
-            io.unobserve(e.target);
-          }
-        }),
-      { root: sc, threshold: 0.15 },
-    );
-    sc.querySelectorAll('.rv').forEach((el) => io.observe(el));
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let raf = 0;
-    const onScroll = () =>
-      (raf ||= requestAnimationFrame(() => {
-        raf = 0;
-        if (!mark.current || still.matches) return;
-        const p = Math.min(1, sc.scrollTop / Math.max(1, sc.clientHeight));
-        mark.current.style.scale = String(1 - p * 0.07);
-      }));
-    sc.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      io.disconnect();
-      sc.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
 
   return (
-    <div className="home" ref={scroller}>
-      <section className="home-hero">
-        <figure className="home-hero-photo">
-          <img src="/home/piano-williams.jpg" alt="Mary Lou Williams at the piano, New York, around 1946" width={826} height={1100} fetchPriority="high" />
-        </figure>
-        <div className="home-hero-side">
-          <p className="home-lede">
-            Play {count} real instruments from your computer keyboard, learn songs as you go, and finish them in a studio. Free, in your
-            browser.
+    <div className="home" ref={root}>
+      <section className="h-hero">
+        <div className="h-hero-copy">
+          <h1>
+            Play any instrument.
+            <br />
+            Finish the song.
+          </h1>
+          <p className="h-lede">
+            {count} sampled instruments you play with your computer keyboard, songs that teach you the keys, and a studio for beats and
+            vocals. Free, in your browser.
           </p>
-          <div className="home-actions">
-            <a className="home-cta" href="#/play">
+          <div className="h-actions">
+            <a className="btn primary lg" href="#/play">
               Start playing <ArrowRight />
             </a>
-            <a className="home-link" href="#/studio">
+            <a className="btn lg" href="#/studio">
               Open the studio
             </a>
-            <button className="home-link" onClick={learn}>
-              Learn a song
-            </button>
           </div>
-          <HeroKeys />
-          <p className="home-keys-note">{mobile ? 'These keys play — tap them.' : 'These keys play — press the letters on them, or tap.'}</p>
+          <p className="h-facts">No sign-up · Works offline once installed · MIDI keyboards supported</p>
         </div>
-        <h1 className="home-mark" ref={mark}>
-          sonare
-        </h1>
+        <HeroWindow />
       </section>
 
-      <Exhibits scroller={scroller} />
-      <Commands />
-      <Ways />
+      <Instruments />
+      <Learn />
+      <Studio />
+      <Themes />
       <StartProject />
 
-      <footer className="home-foot">
-        <span>Instruments and a studio in your browser</span>
+      <footer className="h-foot">
+        <span>Sonare — instruments, lessons and a studio in your browser</span>
         <nav>
           <a href="#/play">Play</a>
           <a href="#/studio">Studio</a>
           <a href="#/settings">Settings</a>
-          <InstallButton className="home-foot-install" />
         </nav>
-        <span>
-          Photographs by William P. Gottlieb, public domain, via the Library of Congress and Wikimedia Commons · {new Date().getFullYear()}
-        </span>
       </footer>
     </div>
   );
