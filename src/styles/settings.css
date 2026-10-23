@@ -47,6 +47,10 @@
   padding: 24px 32px 80px;
   overflow: auto;
 }
+/* the page scrolls, so its rows keep their height — a sideways-scrolling row (the design tabs) would otherwise be squashed flat */
+.set-body > * {
+  flex-shrink: 0;
+}
 .set-section {
   display: flex;
   flex-direction: column;

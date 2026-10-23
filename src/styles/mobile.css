@@ -561,6 +561,11 @@
 :root[data-mobile] .seg button {
   flex: none;
 }
+/* the five instrument-design tabs wrap so every one is visible */
+:root[data-mobile] .seg.skin-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+}
 :root[data-mobile] .skin-preview {
   padding: 10px;
   overflow: hidden;
