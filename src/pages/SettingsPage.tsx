@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, Check, Download, RotateCcw, Upload, Usb } from 'lucide-react';
 import { useSettings, exportSettings, contrastRatio, type Texture, type LabelMode } from '../theme/settings';
 import {
@@ -608,8 +608,23 @@ function Backup() {
   );
 }
 
+const TABS: Tab[] = ['appearance', 'type', 'skins', 'audio', 'backup'];
+/** "#/settings?audio" opens that tab (used by links on the home page and footer). */
+const tabFromHash = (): Tab | null => {
+  const q = location.hash.split('?')[1] as Tab | undefined;
+  return q && TABS.includes(q) ? q : null;
+};
+
 export function SettingsPage() {
-  const [tab, setTab] = useState<Tab>('appearance');
+  const [tab, setTab] = useState<Tab>(() => tabFromHash() ?? 'appearance');
+  useEffect(() => {
+    const on = () => {
+      const t = tabFromHash();
+      if (t) setTab(t);
+    };
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
   const nav: { id: Tab; label: string; desc: string }[] = [
     { id: 'appearance', label: 'Theme & colours', desc: 'Presets and every colour' },
     { id: 'type', label: 'Fonts & layout', desc: 'Typeface, scale, radius' },

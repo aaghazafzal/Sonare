@@ -19,6 +19,7 @@ import './styles/settings.css';
 import './styles/bigpiano.css';
 import './styles/learn.css';
 import './styles/home.css';
+import './styles/pages.css';
 import './styles/mobile.css';
 import { applySettings, useSettings } from './theme/settings';
 import { installMobileDetection } from './lib/useMobile';

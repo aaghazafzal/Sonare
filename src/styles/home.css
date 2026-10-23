@@ -522,30 +522,6 @@
   font-weight: 600;
 }
 
-/* ---------------------------------------------------------------- foot */
-
-.h-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 64px;
-  padding: 24px 0 32px;
-  font-size: 14px;
-  color: var(--text-faint);
-}
-.h-foot nav {
-  display: flex;
-  gap: 20px;
-}
-.home .h-foot a {
-  color: var(--text-muted);
-  text-decoration: none;
-}
-.home .h-foot a:hover {
-  color: var(--text);
-}
-
 /* ------------------------------------------------------- tablet, phone */
 
 @media (max-width: 980px) {
@@ -621,10 +597,6 @@
   .h-copy .btn.lg {
     width: 100%;
     justify-content: center;
-  }
-  .h-foot {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 

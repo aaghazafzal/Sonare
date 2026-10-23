@@ -66,7 +66,7 @@ export default defineConfig({
     samples(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'og-image.png'],
+      includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'og-image.png'],
       manifest: {
         name: 'Sonare — Instruments & Studio',
         short_name: 'Sonare',
@@ -91,7 +91,7 @@ export default defineConfig({
       },
       workbox: {
         // the app shell is precached; samples are cached the first time each one is played
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
         globIgnores: ['audio/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',

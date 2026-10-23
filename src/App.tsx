@@ -4,6 +4,8 @@ import { PlayPage } from './pages/PlayPage';
 import { StudioPage } from './pages/StudioPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { HomePage } from './pages/HomePage';
+import { NotFoundPage, PrivacyPage, TermsPage } from './pages/InfoPages';
+import { LogoMark } from './components/Logo';
 import { setLesson } from './learn/lesson';
 import { applySettings, useSettings } from './theme/settings';
 import { installKeyboardInput } from './audio/input';
@@ -14,22 +16,30 @@ import { installAutosave } from './studio/projects';
 import { useStudio } from './studio/store';
 import * as Tone from 'tone';
 
-type Route = 'home' | 'play' | 'studio' | 'settings';
-const ROUTES: Route[] = ['home', 'play', 'studio', 'settings'];
+type Route = 'home' | 'play' | 'studio' | 'settings' | 'privacy' | 'terms' | 'notfound';
+const ROUTES: Route[] = ['home', 'play', 'studio', 'settings', 'privacy', 'terms'];
 const routeFromHash = (): Route => {
+  // any path but the root (the offline app answers every address with index.html) is a missing page
+  if (!/^\/(index\.html)?$/.test(location.pathname)) return 'notfound';
   const h = location.hash.replace(/^#\/?/, '').split('?')[0];
-  return ROUTES.includes(h as Route) ? (h as Route) : h ? 'play' : 'home';
+  if (!h) return 'home';
+  return ROUTES.includes(h as Route) ? (h as Route) : 'notfound';
 };
 const TITLES: Record<Route, string> = {
   home: 'Sonare — Play piano, guitar, drums & 112 instruments online, free music studio',
   play: 'Play — Sonare online instruments',
   studio: 'Studio — Sonare beat maker & recorder',
   settings: 'Settings — Sonare',
+  privacy: 'Privacy policy — Sonare',
+  terms: 'Terms of use — Sonare',
+  notfound: 'Page not found — Sonare',
 };
 /** "#/play?songs" (app shortcut, home page) opens the song list */
 function readHashQuery() {
   const q = location.hash.split('?')[1];
   if (q === 'songs') {
+    // the song list lives in the Big piano on laptops
+    useSettings.getState().update({ playLayout: 'big' });
     setLesson({ pickerOpen: true });
     history.replaceState(null, '', '#/play');
   }
@@ -38,19 +48,7 @@ function readHashQuery() {
 function Wordmark() {
   return (
     <a className="wordmark" aria-label="Sonare home" href="#/home">
-      <svg viewBox="0 0 28 28" width="26" height="26" aria-hidden>
-        <rect x="1" y="1" width="26" height="26" rx="6" fill="var(--panel-alt)" stroke="var(--border-strong)" />
-        <g fill="var(--text)">
-          <rect x="6" y="6" width="3.4" height="16" rx="1" />
-          <rect x="10.6" y="6" width="3.4" height="16" rx="1" />
-          <rect x="15.2" y="6" width="3.4" height="16" rx="1" />
-          <rect x="19.8" y="6" width="3.4" height="16" rx="1" />
-        </g>
-        <g fill="var(--primary)">
-          <rect x="8.6" y="6" width="2.8" height="9.5" rx="0.8" />
-          <rect x="17.8" y="6" width="2.8" height="9.5" rx="0.8" />
-        </g>
-      </svg>
+      <LogoMark />
       <span>Sonare</span>
     </a>
   );
@@ -136,6 +134,9 @@ export default function App() {
         {route === 'play' && <PlayPage goStudio={() => go('studio')} />}
         {route === 'studio' && <StudioPage />}
         {route === 'settings' && <SettingsPage />}
+        {route === 'privacy' && <PrivacyPage />}
+        {route === 'terms' && <TermsPage />}
+        {route === 'notfound' && <NotFoundPage />}
       </main>
     </div>
   );

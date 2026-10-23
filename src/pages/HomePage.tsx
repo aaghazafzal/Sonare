@@ -3,6 +3,7 @@ import { ArrowRight, Check, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import * as Tone from 'tone';
 import { Keyboard, keyGeometry } from '../components/instruments/Keyboard';
 import { InstallButton } from '../components/ui';
+import { SiteFooter } from '../components/SiteFooter';
 import { noteOff, noteOn, useLive, liveStrip } from '../audio/live';
 import { Voice, ensureAudio } from '../audio/engine';
 import { pianoKeyLabels } from '../audio/input';
@@ -585,14 +586,7 @@ export function HomePage() {
       <Themes />
       <StartProject />
 
-      <footer className="h-foot">
-        <span>Sonare — instruments, lessons and a studio in your browser</span>
-        <nav>
-          <a href="#/play">Play</a>
-          <a href="#/studio">Studio</a>
-          <a href="#/settings">Settings</a>
-        </nav>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

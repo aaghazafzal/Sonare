@@ -52,6 +52,8 @@ Drop a new folder into `Audio/` and re-run to add an instrument, then `npm run c
 | `src/theme/` | Theme presets, skins, settings store and CSS-variable application |
 | `src/learn/` | Song library, lesson engine (watch / wait / play, scoring) and the falling-notes view |
 | `src/pages/HomePage.tsx` | Landing page |
+| `src/pages/InfoPages.tsx` | Privacy policy, terms of use and the in-app 404 page (`public/404.html` is the static one) |
+| `src/components/Logo.tsx` | The Sonare mark — same geometry as `public/favicon.svg` and the icons from `scripts/make-images.py` |
 | `src/lib/pwa.ts` | Install prompt and service-worker registration |
 
 ## Assets
